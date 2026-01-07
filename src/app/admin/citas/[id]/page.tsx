@@ -11,7 +11,7 @@ import Link from "next/link";
 import { obtenerCita, cambiarEstadoCita, asignarEmpleados } from "@/lib/actions/citas";
 import { obtenerEmpleados } from "@/lib/actions/empleados";
 import { formatearFecha, formatearPrecio, nombreCompleto } from "@/lib/utils";
-import type { Cita, EstadoCita, Empleado } from "@/types";
+import { EstadoCita, type Cita, type Empleado } from "@/types";
 
 const estadoColors: Record<EstadoCita, string> = {
     pendiente: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -140,16 +140,16 @@ export default function DetalleCitaPage() {
                     <div className="flex flex-wrap gap-2">
                         <Button
                             size="sm"
-                            variant={cita.estado === "pendiente" ? "default" : "outline"}
-                            onClick={() => handleCambiarEstado("pendiente")}
+                            variant={cita.estado === EstadoCita.PENDIENTE ? "default" : "outline"}
+                            onClick={() => handleCambiarEstado(EstadoCita.PENDIENTE)}
                             disabled={actualizando}
                         >
                             Pendiente
                         </Button>
                         <Button
                             size="sm"
-                            variant={cita.estado === "confirmada" ? "default" : "outline"}
-                            onClick={() => handleCambiarEstado("confirmada")}
+                            variant={cita.estado === EstadoCita.CONFIRMADA ? "default" : "outline"}
+                            onClick={() => handleCambiarEstado(EstadoCita.CONFIRMADA)}
                             disabled={actualizando}
                         >
                             <CheckCircle className="h-4 w-4 mr-1" />
@@ -157,16 +157,16 @@ export default function DetalleCitaPage() {
                         </Button>
                         <Button
                             size="sm"
-                            variant={cita.estado === "en-progreso" ? "default" : "outline"}
-                            onClick={() => handleCambiarEstado("en-progreso")}
+                            variant={cita.estado === EstadoCita.EN_PROGRESO ? "default" : "outline"}
+                            onClick={() => handleCambiarEstado(EstadoCita.EN_PROGRESO)}
                             disabled={actualizando}
                         >
                             En Progreso
                         </Button>
                         <Button
                             size="sm"
-                            variant={cita.estado === "completada" ? "default" : "outline"}
-                            onClick={() => handleCambiarEstado("completada")}
+                            variant={cita.estado === EstadoCita.COMPLETADA ? "default" : "outline"}
+                            onClick={() => handleCambiarEstado(EstadoCita.COMPLETADA)}
                             disabled={actualizando}
                         >
                             <CheckCircle className="h-4 w-4 mr-1" />
@@ -174,8 +174,8 @@ export default function DetalleCitaPage() {
                         </Button>
                         <Button
                             size="sm"
-                            variant={cita.estado === "cancelada" ? "destructive" : "outline"}
-                            onClick={() => handleCambiarEstado("cancelada")}
+                            variant={cita.estado === EstadoCita.CANCELADA ? "destructive" : "outline"}
+                            onClick={() => handleCambiarEstado(EstadoCita.CANCELADA)}
                             disabled={actualizando}
                         >
                             <XCircle className="h-4 w-4 mr-1" />

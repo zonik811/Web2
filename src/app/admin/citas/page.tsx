@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar as CalendarIcon, Filter } from "lucide-react";
 import { obtenerCitas } from "@/lib/actions/citas";
 import { formatearFecha, formatearPrecio } from "@/lib/utils";
-import type { Cita, EstadoCita } from "@/types";
+import { EstadoCita, type Cita } from "@/types";
 
 const estadoColors: Record<EstadoCita, string> = {
     pendiente: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -98,29 +98,29 @@ export default function CitasPage() {
                         </Button>
                         <Button
                             size="sm"
-                            variant={filtroEstado === "pendiente" ? "default" : "outline"}
-                            onClick={() => setFiltroEstado("pendiente")}
+                            variant={filtroEstado === EstadoCita.PENDIENTE ? "default" : "outline"}
+                            onClick={() => setFiltroEstado(EstadoCita.PENDIENTE)}
                         >
                             Pendientes
                         </Button>
                         <Button
                             size="sm"
-                            variant={filtroEstado === "confirmada" ? "default" : "outline"}
-                            onClick={() => setFiltroEstado("confirmada")}
+                            variant={filtroEstado === EstadoCita.CONFIRMADA ? "default" : "outline"}
+                            onClick={() => setFiltroEstado(EstadoCita.CONFIRMADA)}
                         >
                             Confirmadas
                         </Button>
                         <Button
                             size="sm"
-                            variant={filtroEstado === "completada" ? "default" : "outline"}
-                            onClick={() => setFiltroEstado("completada")}
+                            variant={filtroEstado === EstadoCita.COMPLETADA ? "default" : "outline"}
+                            onClick={() => setFiltroEstado(EstadoCita.COMPLETADA)}
                         >
                             Completadas
                         </Button>
                         <Button
                             size="sm"
-                            variant={filtroEstado === "cancelada" ? "default" : "outline"}
-                            onClick={() => setFiltroEstado("cancelada")}
+                            variant={filtroEstado === EstadoCita.CANCELADA ? "default" : "outline"}
+                            onClick={() => setFiltroEstado(EstadoCita.CANCELADA)}
                         >
                             Canceladas
                         </Button>

@@ -2,6 +2,8 @@
  * Calcula el precio estimado de un servicio basado en varios factores
  */
 
+import { ModalidadPago, TipoPropiedad } from "@/types";
+
 interface CalculoPrecioParams {
     precioBase: number;
     unidadPrecio: "hora" | "metrocuadrado" | "servicio";
@@ -61,7 +63,7 @@ export function calcularPrecioServicio(params: CalculoPrecioParams): number {
  */
 interface CalculoPagoEmpleadoParams {
     tarifaPorHora: number;
-    modalidadPago: "hora" | "servicio" | "fijo_mensual";
+    modalidadPago: ModalidadPago;
     duracionServicio?: number; // en minutos
     precioServicio?: number;
     porcentajeServicio?: number; // si se paga por porcentaje del servicio
@@ -79,12 +81,12 @@ export function calcularPagoEmpleado(params: CalculoPagoEmpleadoParams): number 
     let montoAPagar = 0;
 
     switch (modalidadPago) {
-        case "hora":
+        case ModalidadPago.HORA:
             const horas = duracionServicio / 60;
             montoAPagar = tarifaPorHora * horas;
             break;
 
-        case "servicio":
+        case ModalidadPago.SERVICIO:
             if (porcentajeServicio > 0) {
                 // Paga un porcentaje del servicio
                 montoAPagar = (precioServicio * porcentajeServicio) / 100;
@@ -94,7 +96,7 @@ export function calcularPagoEmpleado(params: CalculoPagoEmpleadoParams): number 
             }
             break;
 
-        case "fijo_mensual":
+        case ModalidadPago.FIJO_MENSUAL:
             // Esto se calcula mensualmente, no por servicio individual
             montoAPagar = 0;
             break;
@@ -107,7 +109,7 @@ export function calcularPagoEmpleado(params: CalculoPagoEmpleadoParams): number 
  * Calcula la duración estimada basada en tipo de propiedad y tamaño
  */
 interface CalculoDuracionParams {
-    tipoPropiedad: "casa" | "apartamento" | "oficina" | "local";
+    tipoPropiedad: TipoPropiedad;
     metrosCuadrados?: number;
     habitaciones?: number;
     tipoServicio?: "basico" | "profundo" | "especializado";
@@ -125,16 +127,16 @@ export function calcularDuracionEstimada(params: CalculoDuracionParams): number 
 
     // Ajustar por tipo de propiedad
     switch (tipoPropiedad) {
-        case "apartamento":
+        case TipoPropiedad.APARTAMENTO:
             minutosBase = 90;
             break;
-        case "casa":
+        case TipoPropiedad.CASA:
             minutosBase = 150;
             break;
-        case "oficina":
+        case TipoPropiedad.OFICINA:
             minutosBase = 120;
             break;
-        case "local":
+        case TipoPropiedad.LOCAL:
             minutosBase = 180;
             break;
     }

@@ -2,6 +2,13 @@
 
 import { databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
 import { Query, ID } from "appwrite";
+import {
+    EstadoCita,
+    TipoPropiedad,
+    TipoCliente,
+    FrecuenciaCliente,
+} from "@/types";
+
 import type {
     Cita,
     Cliente,
@@ -10,7 +17,6 @@ import type {
     FiltrosCitas,
     CreateResponse,
     UpdateResponse,
-    EstadoCita,
 } from "@/types";
 import { crearCliente, obtenerClientePorTelefono, actualizarCliente } from "./clientes";
 
@@ -99,10 +105,10 @@ export async function crearCita(
                     email: data.clienteEmail,
                     direccion: data.direccion,
                     ciudad: data.ciudad,
-                    tipoCliente: data.tipoPropiedad === "oficina" || data.tipoPropiedad === "local"
-                        ? "comercial"
-                        : "residencial",
-                    frecuenciaPreferida: "unica",
+                    tipoCliente: data.tipoPropiedad === TipoPropiedad.OFICINA || data.tipoPropiedad === TipoPropiedad.LOCAL
+                        ? TipoCliente.COMERCIAL
+                        : TipoCliente.RESIDENCIAL,
+                    frecuenciaPreferida: FrecuenciaCliente.UNICA,
                 });
 
                 if (nuevoCliente.success && nuevoCliente.data) {
@@ -127,7 +133,7 @@ export async function crearCita(
             horaCita: data.horaCita,
             duracionEstimada: data.duracionEstimada,
             empleadosAsignados: data.empleadosAsignados || [],
-            estado: "pendiente" as EstadoCita,
+            estado: EstadoCita.PENDIENTE,
             precioCliente: data.precioCliente,
             precioAcordado: data.precioAcordado || data.precioCliente,
             metodoPago: data.metodoPago,
@@ -183,7 +189,7 @@ export async function actualizarCita(
         };
 
         // Si se completa la cita, agregar fecha de completado
-        if (data.estado === "completada") {
+        if (data.estado === EstadoCita.COMPLETADA) {
             updateData.completedAt = new Date().toISOString();
         }
 

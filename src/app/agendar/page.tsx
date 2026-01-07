@@ -40,7 +40,7 @@ export default function AgendarPage() {
         clienteEmail: "",
         direccion: "",
         ciudad: "",
-        tipoPropiedad: "casa" as TipoPropiedad,
+        tipoPropiedad: TipoPropiedad.CASA,
         metrosCuadrados: 0,
         habitaciones: 0,
         banos: 0,
@@ -55,16 +55,16 @@ export default function AgendarPage() {
 
         // Precio base según tipo de propiedad
         switch (formData.tipoPropiedad) {
-            case "apartamento":
+            case TipoPropiedad.APARTAMENTO:
                 precioBase = 93000; // Más económico
                 break;
-            case "casa":
+            case TipoPropiedad.CASA:
                 precioBase = 105000;
                 break;
-            case "oficina":
+            case TipoPropiedad.OFICINA:
                 precioBase = 120000; // Más caro
                 break;
-            case "local":
+            case TipoPropiedad.LOCAL:
                 precioBase = 150000; // Comercial más caro
                 break;
             default:
@@ -361,10 +361,10 @@ export default function AgendarPage() {
                                                 onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value as TipoPropiedad })}
                                                 className="flex h-12 w-full rounded-md border-2 border-input bg-white/80 backdrop-blur-sm px-4 text-lg font-medium focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20"
                                             >
-                                                <option value="casa">🏠 Casa</option>
-                                                <option value="apartamento">🏢 Apartamento</option>
-                                                <option value="oficina">💼 Oficina</option>
-                                                <option value="local">🏪 Local Comercial</option>
+                                                <option value={TipoPropiedad.CASA}>🏠 Casa</option>
+                                                <option value={TipoPropiedad.APARTAMENTO}>🏢 Apartamento</option>
+                                                <option value={TipoPropiedad.OFICINA}>💼 Oficina</option>
+                                                <option value={TipoPropiedad.LOCAL}>🏪 Local Comercial</option>
                                             </select>
                                         </div>
 
