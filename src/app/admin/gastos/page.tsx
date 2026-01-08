@@ -16,6 +16,7 @@ import {
     Edit2,
     X
 } from "lucide-react";
+import { TestNotification } from "@/components/admin/TestNotification";
 import { obtenerGastos, registrarGasto, actualizarGasto, obtenerGastosPorCategoria, type Gasto } from "@/lib/actions/gastos";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import {
@@ -164,12 +165,15 @@ export default function GastosPage() {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Control de Gastos</h1>
                     <p className="text-gray-500 mt-1">Gestiona y visualiza los egresos operativos</p>
                 </div>
-                <Button
-                    onClick={() => setShowDialog(true)}
-                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all hover:scale-105"
-                >
-                    <Plus className="mr-2 h-4 w-4" /> Registrar Gasto
-                </Button>
+                <div className="flex items-center gap-2">
+                    <TestNotification />
+                    <Button
+                        onClick={() => setShowDialog(true)}
+                        className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all hover:scale-105"
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Registrar Gasto
+                    </Button>
+                </div>
             </div>
 
             {/* Dashboard Grid */}

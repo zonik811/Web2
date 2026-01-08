@@ -15,6 +15,7 @@ import {
     TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationToggle } from "@/components/ui/notification-toggle";
 import { useAuth } from "@/lib/hooks/useAuth";
 
 const navigation = [
@@ -80,11 +81,14 @@ export function Sidebar() {
 
             {/* User */}
             <div className="p-4 border-t border-slate-700">
-                <div className="mb-3 px-2">
-                    <p className="text-sm font-medium text-white truncate">
-                        {user?.name || user?.email || "Admin"}
-                    </p>
-                    <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                <div className="flex items-center justify-between mb-3 px-2">
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-medium text-white truncate">
+                            {user?.name || user?.email || "Admin"}
+                        </p>
+                        <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                    </div>
+                    <NotificationToggle />
                 </div>
                 <Button
                     onClick={handleLogout}
