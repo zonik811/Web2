@@ -4,13 +4,14 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileSidebar } from "@/components/layout/MobileSidebar";
 
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { user, role, loading } = useAuth(); // Added role
+    const { user, role, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -18,7 +19,6 @@ export default function AdminLayout({
             if (!user) {
                 router.push("/login");
             } else if (role !== "admin") {
-                // If user is logged in but NOT admin, redirect to portal (or home)
                 router.push("/portal/dashboard");
             }
         }
@@ -36,19 +36,24 @@ export default function AdminLayout({
     }
 
     if (!user) {
-        return null;
+        return null; // Don't render anything while redirecting
     }
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {/* Sidebar */}
+            {/* Mobile Header / Trigger */}
+            <div className="lg:hidden fixed top-4 left-4 z-50">
+                <MobileSidebar />
+            </div>
+
+            {/* Sidebar Desktop */}
             <aside className="hidden lg:block w-64 border-r border-gray-200">
                 <Sidebar />
             </aside>
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
-                <div className="container mx-auto p-6 max-w-7xl">
+                <div className="container mx-auto p-6 max-w-7xl pt-16 lg:pt-6">
                     {children}
                 </div>
             </main>

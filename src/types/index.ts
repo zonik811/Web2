@@ -184,6 +184,20 @@ export interface PagoEmpleado {
     updatedAt: string;
 }
 
+export interface Gasto {
+    $id: string;
+    categoria: string; // "transporte", "materiales", etc.
+    concepto: string;
+    monto: number;
+    metodoPago: string; // "efectivo", "transferencia", etc.
+    proveedor?: string;
+    fecha: string; // ISO Date "YYYY-MM-DD"
+    notas?: string;
+    creadoPor?: string; // Admin ID
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Cliente {
     $id: string;
     nombre: string;

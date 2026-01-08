@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "AltioraClean - Servicios de Limpieza Profesional",
   description: "Servicios de limpieza residencial y comercial de alta calidad",
+  manifest: "/manifest.json",
+  themeColor: "#0ea5e9",
+  viewport: "minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover",
 };
 
 export default function RootLayout({

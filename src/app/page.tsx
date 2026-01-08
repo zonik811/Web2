@@ -33,31 +33,31 @@ export default function HomePage() {
             <Badge className="mb-6 bg-white/20 backdrop-blur-sm border-white/30 text-white text-lg px-6 py-2">
               ✨ #1 en Servicios de Limpieza
             </Badge>
-            <h1 className="text-6xl md:text-8xl font-bold mb-6 leading-tight">
+            <h1 className="text-5xl md:text-8xl font-bold mb-6 leading-tight">
               Altiora<span className="text-secondary">Clean</span>
-              <span className="block text-5xl md:text-6xl mt-2">Limpieza que Brilla</span>
+              <span className="block text-4xl md:text-6xl mt-2">Limpieza que Brilla</span>
             </h1>
-            <p className="text-2xl mb-10 text-white/90 leading-relaxed max-w-2xl">
+            <p className="text-xl md:text-2xl mb-10 text-white/90 leading-relaxed max-w-2xl">
               Transformamos tu espacio con servicios de limpieza de clase mundial.
               Personal certificado, productos premium y resultados garantizados.
             </p>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <Link href="/agendar">
-                <Button size="lg" className="text-2xl px-10 py-8 bg-secondary hover:bg-secondary/90 shadow-2xl animate-pulse-strong">
-                  <Sparkles className="mr-3 h-8 w-8" />
-                  Agendar Servicio Ahora
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+              <Link href="/agendar" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full text-xl md:text-2xl px-8 py-6 md:px-10 md:py-8 bg-secondary hover:bg-secondary/90 shadow-2xl animate-pulse-strong">
+                  <Sparkles className="mr-3 h-6 w-6 md:h-8 md:w-8" />
+                  Agendar Ahora
                 </Button>
               </Link>
 
-              <Link href="/registro">
-                <Button size="lg" className="text-xl px-10 py-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-2xl animate-bounce-slow border-2 border-white/20">
+              <Link href="/registro" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full text-lg md:text-xl px-8 py-6 md:px-10 md:py-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-2xl animate-bounce-slow border-2 border-white/20">
                   <Award className="mr-2 h-6 w-6" />
                   Registrarse (4% OFF)
                 </Button>
               </Link>
 
-              <Link href="#servicios">
-                <Button size="lg" variant="outline" className="text-xl px-12 py-8 border-2 border-white text-white hover:bg-white/10 backdrop-blur-sm">
+              <Link href="#servicios" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full text-lg md:text-xl px-8 py-6 md:px-12 md:py-8 border-2 border-white text-white hover:bg-white/10 backdrop-blur-sm">
                   Ver Servicios
                 </Button>
               </Link>
