@@ -11,7 +11,7 @@ import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login, role } = useAuth();
+    const { login, role, loading: authLoading } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -19,14 +19,28 @@ export default function LoginPage() {
 
     // Efecto para redireccionar cuando el rol se detecta
     useEffect(() => {
-        if (role) {
+        if (!authLoading && role) {
             if (role === "admin") {
                 router.push("/admin");
             } else if (role === "client") {
                 router.push("/portal/dashboard");
             }
         }
-    }, [role, router]);
+    }, [role, router, authLoading]);
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 via-white to-emerald-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-sky-500 to-emerald-500 rounded-3xl flex items-center justify-center shadow-2xl animate-pulse">
+                        <Sparkles className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-emerald-600"></div>
+                    <p className="text-gray-500 font-medium animate-pulse">Verificando sesión...</p>
+                </div>
+            </div>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,7 +52,6 @@ export default function LoginPage() {
             // La redirección es manejada por el useEffect
         } catch (err: any) {
             setError(err.message || "Error al iniciar sesión");
-        } finally {
             setLoading(false);
         }
     };
