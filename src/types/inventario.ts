@@ -1,3 +1,5 @@
+import { Models } from "node-appwrite";
+
 export interface Proveedor {
     $id: string;
     nombre: string;
@@ -49,8 +51,7 @@ export interface MovimientoInventario {
     createdAt?: string;
 }
 
-export interface CompraProveedor {
-    $id: string;
+export interface CompraProveedor extends Models.Document {
     proveedor_id: string;
     fecha_compra: string;
     total: number;
@@ -60,7 +61,6 @@ export interface CompraProveedor {
     detalles_items?: string; // JSON string of items bought
     subtotal?: number;
     iva?: number;
-    createdAt?: string;
 
     // Relations
     proveedor?: Proveedor;
