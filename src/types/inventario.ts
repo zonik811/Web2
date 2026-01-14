@@ -1,7 +1,6 @@
 import { Models } from "node-appwrite";
 
-export interface Proveedor {
-    $id: string;
+export interface Proveedor extends Models.Document {
     nombre: string;
     nit_rut?: string;
     telefono?: string;
@@ -9,12 +8,9 @@ export interface Proveedor {
     direccion?: string;
     nombre_contacto?: string;
     activo: boolean;
-    createdAt?: string;
-    updatedAt?: string;
 }
 
-export interface Producto {
-    $id: string;
+export interface Producto extends Models.Document {
     nombre: string;
     descripcion?: string;
     sku?: string;
@@ -31,15 +27,12 @@ export interface Producto {
     porcentaje_descuento?: number;
     precio_promocional?: number;
     imagenes: string[];
-    createdAt?: string;
-    updatedAt?: string;
 
     // Relations (joined)
     proveedor?: Proveedor;
 }
 
-export interface MovimientoInventario {
-    $id: string;
+export interface MovimientoInventario extends Models.Document {
     producto_id: string;
     tipo: 'entrada' | 'salida' | 'ajuste' | 'venta' | 'compra';
     cantidad: number;
@@ -48,7 +41,6 @@ export interface MovimientoInventario {
     usuario_id?: string;
     referencia?: string; // ID de orden o referencia externa
     notas?: string;
-    createdAt?: string;
 }
 
 export interface CompraProveedor extends Models.Document {
@@ -72,13 +64,11 @@ export interface DetalleItemCompra {
     precio_unitario: number;
 }
 
-export interface PagoCompra {
-    $id: string;
+export interface PagoCompra extends Models.Document {
     compra_id: string; // ID of the purchase
     monto: number;
     fecha_pago: string;
     metodo_pago: string;
     referencia?: string;
     notas?: string;
-    createdAt?: string;
 }
