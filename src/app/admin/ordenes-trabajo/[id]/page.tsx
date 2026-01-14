@@ -4,6 +4,7 @@ import { obtenerVehiculos } from "@/lib/actions/vehiculos";
 import { obtenerEmpleados } from "@/lib/actions/empleados";
 import OrdenDetalleClient from "./OrdenDetalleClient";
 import { notFound } from "next/navigation";
+import { CargoEmpleado } from "@/types";
 
 export default async function OrdenDetallePage({ params }: { params: Promise<{ id: string }> }) {
     try {
@@ -13,7 +14,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
         const [clientes, vehiculos, empleados] = await Promise.all([
             obtenerClientes(),
             obtenerVehiculos(),
-            obtenerEmpleados({ activo: true, cargo: 'Técnico' }) // Filtrar por "Técnico" (case sensitive en Appwrite)
+            obtenerEmpleados({ activo: true, cargo: CargoEmpleado.TECNICO }) // Filtrar por "Técnico" (case sensitive en Appwrite)
         ]);
 
         const cliente = clientes.find(c => c.$id === orden.clienteId);
