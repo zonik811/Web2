@@ -57,6 +57,7 @@ export const COLLECTIONS = {
 
     // Comisiones
     COMISIONES: 'comisiones',
+    OT_SOLICITUDES_REPUESTOS: 'ot_solicitudes_repuestos',
 
     // Facturas y Pagos
     FACTURAS: 'facturas',
