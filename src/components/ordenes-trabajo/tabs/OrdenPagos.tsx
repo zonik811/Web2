@@ -162,8 +162,9 @@ export function OrdenPagos({ ordenId, factura, pagos, saldoPendiente }: OrdenPag
                             </div>
                         ) : (
                             pagos.map((pago) => {
-                                const Icon = METODO_PAGO_ICONS[pago.metodoPago2] || DollarSign;
-                                const colorClass = METODO_PAGO_COLORS[pago.metodoPago2] || "bg-slate-100 text-slate-600";
+                                const metodo = pago.metodoPago2 || 'efectivo';
+                                const Icon = METODO_PAGO_ICONS[metodo] || DollarSign;
+                                const colorClass = METODO_PAGO_COLORS[metodo] || "bg-slate-100 text-slate-600";
 
                                 return (
                                     <div key={pago.$id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 transition-colors gap-4">
@@ -172,7 +173,7 @@ export function OrdenPagos({ ordenId, factura, pagos, saldoPendiente }: OrdenPag
                                                 <Icon className="h-6 w-6" />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="font-semibold text-slate-900">{METODO_PAGO_LABELS[pago.metodoPago2] || pago.metodoPago2}</p>
+                                                <p className="font-semibold text-slate-900">{METODO_PAGO_LABELS[metodo] || metodo}</p>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
