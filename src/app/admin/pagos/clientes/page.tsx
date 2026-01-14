@@ -230,7 +230,7 @@ export default function PagosClientesPage() {
         const cita = citasCliente.find(c => c.id === citaId);
 
         if (cita) {
-            const pagosDeEstaCita = pagos.filter(p => p.citaId === citaId || p.citaId[0] === citaId);
+            const pagosDeEstaCita = pagos.filter(p => p.citaId === citaId || (Array.isArray(p.citaId) && p.citaId[0] === citaId));
             const totalPagado = pagosDeEstaCita.reduce((s, p) => s + p.monto, 0);
             const precioTotal = cita.precioAcordado || cita.precioCliente || 0;
             const restante = Math.max(0, precioTotal - totalPagado);
