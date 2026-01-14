@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { crearEmpleado } from "@/lib/actions/empleados";
-import { ModalidadPago } from "@/types";
+import { ModalidadPago, CargoEmpleado } from "@/types";
 import { toast } from "@/lib/hooks/use-toast";
 import { obtenerCargos } from "@/lib/actions/parametricas";
 import { obtenerCategorias, type Categoria } from "@/lib/actions/categorias";
