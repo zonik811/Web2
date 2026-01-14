@@ -203,8 +203,7 @@ export interface Gasto {
     updatedAt: string;
 }
 
-export interface Cliente {
-    $id: string;
+export interface Cliente extends Models.Document {
     nombre: string;
     telefono: string;
     email: string;
@@ -217,7 +216,6 @@ export interface Cliente {
     calificacionPromedio: number; // Cómo califican al servicio
     notasImportantes?: string; // Preferencias, alergias, instrucciones
     activo: boolean;
-    createdAt: string;
     // Loyalty
     puntosAcumulados?: number;
     nivelFidelidad?: string;
