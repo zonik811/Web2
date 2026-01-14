@@ -166,7 +166,7 @@ export default function PagosClientesPage() {
 
         if (filtros.clienteId !== "todos") {
             resultado = resultado.filter(p => {
-                const cita = citas.find(c => c.id === p.citaId || c.id === p.citaId[0]);
+                const cita = citas.find(c => c.id === p.citaId || (Array.isArray(p.citaId) && p.citaId[0] === c.id));
                 return cita && cita.clienteId === filtros.clienteId;
             });
         }
@@ -183,7 +183,7 @@ export default function PagosClientesPage() {
         if (filtros.search) {
             const searchLower = filtros.search.toLowerCase();
             resultado = resultado.filter(p => {
-                const cita = citas.find(c => c.id === p.citaId || c.id === p.citaId[0]);
+                const cita = citas.find(c => c.id === p.citaId || (Array.isArray(p.citaId) && p.citaId[0] === c.id));
                 const cliente = clientes.find(c => c.$id === cita?.clienteId);
                 const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : "";
                 return clienteNombre.toLowerCase().includes(searchLower) ||
@@ -325,7 +325,7 @@ export default function PagosClientesPage() {
 
     const chartData = clientes.map(cliente => {
         const pagosDelCliente = filteredPagos.filter(p => {
-            const cita = citas.find(c => c.id === p.citaId || c.id === p.citaId[0]);
+            const cita = citas.find(c => c.id === p.citaId || (Array.isArray(p.citaId) && p.citaId[0] === c.id));
             return cita && cita.clienteId === cliente.$id;
         });
 
@@ -520,7 +520,7 @@ export default function PagosClientesPage() {
                                         </TableRow>
                                     ) : (
                                         filteredPagos.map((pago) => {
-                                            const cita = citas.find(c => c.id === pago.citaId[0] || c.id === pago.citaId);
+                                            const cita = citas.find(c => c.id === pago.citaId || (Array.isArray(pago.citaId) && pago.citaId[0] === c.id));
                                             const cliente = clientes.find(c => c.$id === cita?.clienteId);
                                             const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : (cita?.clienteNombre || "Desconocido");
 
