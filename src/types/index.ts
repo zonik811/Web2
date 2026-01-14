@@ -9,12 +9,12 @@ export enum EstadoCita {
     CANCELADA = "cancelada",
 }
 
-// export enum CargoEmpleado {
-//     LIMPIADOR = "limpiador",
-//     SUPERVISOR = "supervisor",
-//     ESPECIALISTA = "especialista",
-// }
-export type CargoEmpleado = string;
+export enum CargoEmpleado {
+    LIMPIADOR = "limpiador",
+    SUPERVISOR = "supervisor",
+    ESPECIALISTA = "especialista",
+}
+
 
 export enum ModalidadPago {
     HORA = "hora",
