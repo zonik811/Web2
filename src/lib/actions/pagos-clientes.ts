@@ -8,12 +8,19 @@ import type { CreateResponse } from "@/types";
 /**
  * Pago interface
  */
+/**
+ * Pago interface
+ */
 export interface PagoCliente {
     $id: string;
-    ordenTrabajoId: string;
+    ordenTrabajoId?: string;
+    citaId?: string | string[];
+    clienteId?: string;
     facturaId?: string;
     monto: number;
-    metodoPago2: 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+    metodoPago: string;
+    metodoPago2?: 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+    estado?: string;
     fecha: string;
     fechaPago: string;
     comprobante?: string;
@@ -25,13 +32,20 @@ export interface PagoCliente {
  * Register payment
  */
 export async function registrarPago(data: {
-    ordenTrabajoId: string;
+    ordenTrabajoId?: string;
+    citaId?: string;
+    clienteId?: string;
     facturaId?: string;
     monto: number;
-    metodoPago2: 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+    metodoPago?: string;
+    metodoPago2?: 'efectivo' | 'tarjeta' | 'transferencia' | 'cheque';
+    estado?: string;
     referencia?: string;
     observaciones?: string;
+    notas?: string;
     fecha?: string;
+    fechaPago?: string;
+    comprobante?: string;
 }): Promise<CreateResponse<PagoCliente>> {
     try {
         const pago = await databases.createDocument(
@@ -39,16 +53,18 @@ export async function registrarPago(data: {
             COLLECTIONS.PAGOS_CLIENTES,
             ID.unique(),
             {
-                citaId: "0",
-                ordenTrabajoId: data.ordenTrabajoId,
+                citaId: data.citaId || "0",
+                clienteId: data.clienteId,
+                ordenTrabajoId: data.ordenTrabajoId || "0",
                 facturaId: data.facturaId || "",
                 monto: data.monto,
-                metodoPago: "efectivo", // Always send valid value for legacy field
+                metodoPago: data.metodoPago || "efectivo",
                 metodoPago2: data.metodoPago2,
+                estado: data.estado || "pagado",
                 fecha: data.fecha || new Date().toISOString(),
-                fechaPago: (data.fecha || new Date().toISOString()).substring(0, 10), // YYYY-MM-DD
-                comprobante: data.referencia || "",
-                notas: data.observaciones || "",
+                fechaPago: data.fechaPago || (data.fecha || new Date().toISOString()).substring(0, 10),
+                comprobante: data.comprobante || data.referencia || "",
+                notas: data.notas || data.observaciones || "",
                 createdAt: new Date().toISOString()
             }
         );
