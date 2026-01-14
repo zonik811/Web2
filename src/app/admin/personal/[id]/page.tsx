@@ -222,7 +222,7 @@ export default function PerfilEmpleadoPage() {
         try {
             const payload = {
                 ...editData,
-                cargo: editData.cargo,
+                cargo: editData.cargo as CargoEmpleado,
                 modalidadPago: editData.modalidadPago as ModalidadPago,
                 activo: empleado.activo
             };
