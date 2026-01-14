@@ -2,9 +2,11 @@
 
 import { databases, storage } from "@/lib/appwrite-admin";
 import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, Models } from "node-appwrite";
 import { Producto, Proveedor, MovimientoInventario } from "@/types/inventario";
 import { revalidatePath } from "next/cache";
+
+// ... (existing code) ...
 
 // ==========================================
 // PROVEEDORES
@@ -247,7 +249,7 @@ export async function actualizarProducto(id: string, data: Partial<Producto>) {
 // MOVIMIENTOS E INVENTARIO
 // ==========================================
 
-export async function registrarMovimiento(movimiento: Omit<MovimientoInventario, "$id" | "createdAt">) {
+export async function registrarMovimiento(movimiento: Omit<MovimientoInventario, keyof Models.Document>) {
     try {
         // 1. Fetch Product FIRST to get current stock (stockAnterior)
         const producto = await databases.getDocument(DATABASE_ID, COLLECTIONS.PRODUCTOS, movimiento.producto_id);
