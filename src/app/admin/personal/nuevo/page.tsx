@@ -90,7 +90,11 @@ export default function NuevoEmpleadoPage() {
         }
 
         try {
-            const response = await crearEmpleado(formData);
+            const payload = {
+                ...formData,
+                cargo: formData.cargo as CargoEmpleado
+            };
+            const response = await crearEmpleado(payload);
 
             if (response.success) {
                 toast({ title: "Exito", description: "Empleado creado correctamente", className: "bg-green-50 border-green-200" });
