@@ -9,10 +9,10 @@ import { OrdenesFilters } from "@/components/ordenes-trabajo/OrdenesFilters";
 export default async function OrdenesTrabajoPage({
     searchParams,
 }: {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    // Resolver searchParams si es una promesa (Next.js 15+) o usar directamente
-    const resolvedParams = await Promise.resolve(searchParams);
+    // Resolver searchParams si es una promesa (Next.js 15+)
+    const resolvedParams = await searchParams;
 
     const query = typeof resolvedParams.query === 'string' ? resolvedParams.query : undefined;
     const clienteId = typeof resolvedParams.clienteId === 'string' ? resolvedParams.clienteId : undefined;

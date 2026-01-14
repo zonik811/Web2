@@ -1,8 +1,8 @@
 "use server";
 
-import { databases, storage, InputFile } from "@/lib/appwrite-server"; // Use Server SDK
+import { databases, storage } from "@/lib/appwrite-server"; // Use Server SDK
 import { DATABASE_ID, COLLECTIONS, STORAGE_BUCKET_ID } from "@/lib/appwrite";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, InputFile } from "node-appwrite";
 import {
     type Servicio,
     type CrearServicioInput,
