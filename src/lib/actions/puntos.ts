@@ -62,7 +62,7 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
         const cliente = clienteDoc as unknown as Cliente;
         const nuevosPuntos = (cliente.puntosAcumulados || 0) + data.puntos;
         const nuevoTotalGastado = (cliente.totalGastado || 0) + (data.precioServicio || 0);
-        const nuevosServiciosCompletados = (cliente.serviciosCompletados || 0) + 1;
+        const nuevosServiciosCompletados = (cliente.totalServicios || 0) + 1;
 
         // Calcular nivel (Misma lógica que en citas.ts)
         let nuevoNivel = cliente.nivelFidelidad || "BRONCE";
@@ -77,7 +77,7 @@ export async function registrarPuntos(data: RegistrarPuntosInput): Promise<Creat
                 puntosAcumulados: nuevosPuntos,
                 nivelFidelidad: nuevoNivel,
                 totalGastado: nuevoTotalGastado,
-                serviciosCompletados: nuevosServiciosCompletados
+                totalServicios: nuevosServiciosCompletados
             }
         );
 
