@@ -45,6 +45,7 @@ import { obtenerTiposCliente } from "@/lib/actions/parametricas";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import type { Cliente } from "@/types";
 import { TipoCliente, FrecuenciaCliente } from "@/types";
+import { ClientOrderCount } from "@/components/admin/clientes/ClientOrderCount";
 
 export default function ClientesPage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -319,6 +320,7 @@ export default function ClientesPage() {
                                 <TableHead className="font-semibold text-gray-600">Ubicación</TableHead>
                                 <TableHead className="font-semibold text-gray-600">Tipo</TableHead>
                                 <TableHead className="font-semibold text-gray-600 text-center">Servicios</TableHead>
+                                <TableHead className="font-semibold text-gray-600 text-center">Órdenes</TableHead>
                                 <TableHead className="font-semibold text-gray-600 text-right pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -387,6 +389,9 @@ export default function ClientesPage() {
                                             <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                                 {cliente.totalServicios || 0}
                                             </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <ClientOrderCount clienteId={cliente.$id} />
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <DropdownMenu>

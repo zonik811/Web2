@@ -13,6 +13,7 @@ import type {
     DeleteResponse,
     EstadisticasEmpleado,
 } from "@/types";
+import { obtenerHistorialOrdenesEmpleado } from "@/lib/actions/reportes-empleados";
 
 /**
  * Obtiene la lista de empleados con filtros opcionales
@@ -293,15 +294,13 @@ export async function obtenerEstadisticasEmpleado(
             return total + (com.monto || 0);
         }, 0);
 
-        const totalGanado = ganadoServicios + ganadoComisiones;
+        // Obtener historial de órdenes de trabajo para calcular ganancias estimadas
+        const historialOrdenes = await obtenerHistorialOrdenesEmpleado(empleadoId);
+        const ganadoOrdenes = historialOrdenes.reduce((total, orden) => total + orden.totalGanadoEstimado, 0);
+
+        const totalGanado = ganadoServicios + ganadoComisiones + ganadoOrdenes;
 
         // Pendiente por pagar = Total Ganado - Total Pagado
-        // Nota: Esto asume que cuando se paga una comisión, se crea un registro en PAGOS_EMPLEADOS
-        // Si el sistema de comisiones es independiente (se marcan como pagadas in-situ), la lógica sería diferente.
-        // Asumamos que "pendientePorPagar" es una guía. 
-        // Si PAGOS_EMPLEADOS es la fuente de verdad de salida de dinero:
-        // Pendiente = (Servicios + Comisiones) - PagosRegistrados.
-        // Esto funciona.
         const pendientePorPagar = totalGanado - totalPagado;
 
         return {

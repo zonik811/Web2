@@ -20,6 +20,7 @@ import { obtenerURLArchivo } from "@/lib/appwrite";
 import { nombreCompleto } from "@/lib/utils";
 import type { Empleado } from "@/types";
 import { Input } from "@/components/ui/input";
+import { EmployeeOrderCount } from "@/components/admin/personal/EmployeeOrderCount";
 
 export default function PersonalPage() {
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -155,6 +156,7 @@ export default function PersonalPage() {
                                     <TableHead className="font-semibold text-gray-700">Cargo</TableHead>
                                     <TableHead className="font-semibold text-gray-700">Especialidades</TableHead>
                                     <TableHead className="text-center font-semibold text-gray-700">Servicios</TableHead>
+                                    <TableHead className="text-center font-semibold text-gray-700">Órdenes</TableHead>
                                     <TableHead className="text-center font-semibold text-gray-700">Estado</TableHead>
                                     <TableHead className="text-right pr-6 font-semibold text-gray-700">Acciones</TableHead>
                                 </TableRow>
@@ -209,6 +211,9 @@ export default function PersonalPage() {
                                         </TableCell>
                                         <TableCell className="text-center font-semibold text-gray-700 text-base">
                                             {empleado.totalServicios || 0}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <EmployeeOrderCount empleadoId={empleado.$id} />
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex justify-center">

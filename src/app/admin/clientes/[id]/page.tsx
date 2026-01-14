@@ -44,7 +44,27 @@ export default function DetalleClientePage() {
         try {
             setLoading(true);
             const resultado = await obtenerDetalleCliente(id);
-            setData(resultado);
+
+            // Fetch Orders
+            const { obtenerHistorialOrdenesCliente } = await import("@/lib/actions/reportes-clientes");
+            const historialOrdenes = await obtenerHistorialOrdenesCliente(id);
+
+            // Calculate Order Financials
+            const totalDeudaOrdenes = historialOrdenes.reduce((sum, o) => sum + o.saldo, 0);
+            const totalPagadoOrdenes = historialOrdenes.reduce((sum, o) => sum + o.pagado, 0);
+            const totalOrdenesCompletadas = historialOrdenes.filter(o => o.estado === 'COMPLETADA' || o.estado === 'ENTREGADA').length;
+
+            setData({
+                ...resultado,
+                historialOrdenes,
+                estadisticas: {
+                    ...resultado.estadisticas,
+                    saldoPendiente: resultado.estadisticas.saldoPendiente + totalDeudaOrdenes,
+                    totalPagado: resultado.estadisticas.totalPagado + totalPagadoOrdenes,
+                    // We can also add totalOrdenes to stats if we want to display it
+                    totalOrdenes: totalOrdenesCompletadas
+                }
+            });
         } catch (error) {
             console.error("Error cargando detalle:", error);
         } finally {
@@ -148,11 +168,13 @@ export default function DetalleClientePage() {
                 <Card className="border-none shadow-md bg-white">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-gray-500 text-sm font-medium flex items-center">
-                            <CheckCircle2 className="mr-2 h-4 w-4 text-blue-500" /> Servicios Completados
+                            <CheckCircle2 className="mr-2 h-4 w-4 text-blue-500" /> Servicios y Órdenes
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-gray-900">{estadisticas.totalServicios}</div>
+                        <div className="text-3xl font-bold text-gray-900">
+                            {(estadisticas.totalServicios || 0) + (estadisticas.totalOrdenes || 0)}
+                        </div>
                         <div className="flex items-center text-xs text-gray-500 mt-1">
                             {estadisticas.proximaCita ? (
                                 <span className="text-blue-600 font-medium flex items-center">
@@ -170,6 +192,7 @@ export default function DetalleClientePage() {
             <Tabs defaultValue="citas" className="space-y-6">
                 <TabsList className="bg-white p-1 rounded-lg border border-gray-100 shadow-sm w-full md:w-auto flex overflow-x-auto">
                     <TabsTrigger value="citas" className="flex-1 md:flex-none">Historial de Citas</TabsTrigger>
+                    <TabsTrigger value="ordenes" className="flex-1 md:flex-none">Historial de Órdenes</TabsTrigger>
                     <TabsTrigger value="pagos" className="flex-1 md:flex-none">Historial de Pagos</TabsTrigger>
                     <TabsTrigger value="info" className="flex-1 md:flex-none">Información Personal</TabsTrigger>
                 </TabsList>

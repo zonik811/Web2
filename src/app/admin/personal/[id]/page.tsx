@@ -41,6 +41,7 @@ import Link from "next/link";
 import { obtenerEmpleado, obtenerEstadisticasEmpleado, actualizarEmpleado } from "@/lib/actions/empleados";
 import { obtenerCitas, actualizarCita } from "@/lib/actions/citas";
 import { obtenerPagosEmpleado, registrarPago, type Pago } from "@/lib/actions/pagos";
+import { obtenerHistorialOrdenesEmpleado, type OrdenEmpleadoResumen } from "@/lib/actions/reportes-empleados";
 import { obtenerCargos } from "@/lib/actions/parametricas";
 import { obtenerCategorias, type Categoria } from "@/lib/actions/categorias";
 import { obtenerComisionesEmpleado, crearComision, eliminarComision } from "@/lib/actions/comisiones";
@@ -59,6 +60,7 @@ export default function PerfilEmpleadoPage() {
     const [empleado, setEmpleado] = useState<Empleado | null>(null);
     const [stats, setStats] = useState<EstadisticasEmpleado | null>(null);
     const [servicios, setServicios] = useState<Cita[]>([]);
+    const [ordenesAsignadas, setOrdenesAsignadas] = useState<OrdenEmpleadoResumen[]>([]);
     const [pagos, setPagos] = useState<Pago[]>([]);
     const [comisiones, setComisiones] = useState<Comision[]>([]);
     const [loading, setLoading] = useState(true);
@@ -153,12 +155,14 @@ export default function PerfilEmpleadoPage() {
             const estadisticas = await obtenerEstadisticasEmpleado(empleadoId);
             setStats(estadisticas);
 
-            const [servs, pag, coms] = await Promise.all([
+            const [servs, ords, pag, coms] = await Promise.all([
                 obtenerCitas({ empleadoId: empleadoId, estado: 'completada' } as any),
+                obtenerHistorialOrdenesEmpleado(empleadoId),
                 obtenerPagosEmpleado(empleadoId),
                 obtenerComisionesEmpleado(empleadoId)
             ]);
             setServicios(servs as Cita[]);
+            setOrdenesAsignadas(ords);
             setPagos(pag);
             setComisiones(coms);
 
@@ -523,7 +527,7 @@ export default function PerfilEmpleadoPage() {
                         <CardHeader className="pb-0 border-b border-gray-100 bg-gray-50/30">
                             <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2 py-2">
                                 <Clock className="h-5 w-5 text-gray-400" />
-                                Servicios Realizados
+                                Servicios Realizados (Citas Rápidas)
                                 <Badge variant="secondary" className="ml-2 bg-gray-100 text-gray-600 border-none">{servicios.length}</Badge>
                             </CardTitle>
                         </CardHeader>
@@ -585,6 +589,81 @@ export default function PerfilEmpleadoPage() {
                                                     </TableRow>
                                                 );
                                             })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Historial de Órdenes de Trabajo (NUEVO) */}
+                    <Card className="border-none shadow-md overflow-hidden bg-white">
+                        <CardHeader className="pb-0 border-b border-gray-100 bg-gray-50/30">
+                            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2 py-2">
+                                <Briefcase className="h-5 w-5 text-indigo-400" />
+                                Órdenes de Trabajo Asignadas
+                                <Badge variant="secondary" className="ml-2 bg-indigo-50 text-indigo-700 border-indigo-100">{ordenesAsignadas.length}</Badge>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="max-h-[300px] overflow-y-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                                        <TableRow>
+                                            <TableHead className="pl-6 font-semibold">N° Orden</TableHead>
+                                            <TableHead className="font-semibold">Vehículo</TableHead>
+                                            <TableHead className="font-semibold">Rol</TableHead>
+                                            <TableHead className="text-center font-semibold text-xs">Horas Reg.</TableHead>
+                                            <TableHead className="text-center font-semibold">Estado</TableHead>
+                                            <TableHead className="text-right pr-6 font-semibold">Estimado</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {ordenesAsignadas.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                                    No hay órdenes de trabajo asignadas o con actividad
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            ordenesAsignadas.map((orden) => (
+                                                <TableRow key={orden.ordenId} className="hover:bg-gray-50/50">
+                                                    <TableCell className="pl-6 font-medium text-blue-600">
+                                                        <Link href={`/admin/ordenes-trabajo/${orden.ordenId}`} className="hover:underline">
+                                                            {orden.numeroOrden}
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-600">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-sm text-gray-900">{orden.vehiculo.placa}</span>
+                                                            <span className="text-xs text-gray-500">{orden.vehiculo.marca} {orden.vehiculo.modelo}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline" className="bg-white text-gray-600 border-gray-200 font-normal">
+                                                            {orden.rol}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                                                            {orden.horasRegistradas} h
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge className={
+                                                            orden.estado === 'EN_PROCESO' ? "bg-blue-100 text-blue-700 hover:bg-blue-200" :
+                                                                orden.estado === 'POR_PAGAR' ? "bg-orange-100 text-orange-700 hover:bg-orange-200" :
+                                                                    orden.estado === 'COMPLETADA' ? "bg-green-100 text-green-700 hover:bg-green-200" :
+                                                                        "bg-gray-100 text-gray-700"
+                                                        }>
+                                                            {orden.estado.replace("_", " ")}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6 font-semibold text-emerald-600">
+                                                        {formatearPrecio(orden.totalGanadoEstimado)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
                                         )}
                                     </TableBody>
                                 </Table>
