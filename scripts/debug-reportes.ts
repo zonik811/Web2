@@ -3,7 +3,7 @@ import {
     obtenerRendimientoPersonal,
     obtenerResumenFinanciero
 } from "../src/lib/actions/reportes";
-import { databaseClient } from "../src/lib/appwrite";
+import { databases } from "../src/lib/appwrite";
 import { COLLECTIONS, DATABASE_ID } from "../src/lib/appwrite";
 
 async function main() {
@@ -16,7 +16,7 @@ async function main() {
     // 1. Debug Citas Raw Structure
     console.log("\n--- Comprobando Estructura de Citas (Raw) ---");
     try {
-        const citasRaw = await databaseClient.listDocuments(
+        const citasRaw = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.CITAS,
             []
