@@ -41,6 +41,7 @@ import {
     DialogFooter
 } from "@/components/ui/dialog";
 import { obtenerClientes, crearCliente, actualizarCliente, eliminarCliente } from "@/lib/actions/clientes";
+import { obtenerTiposCliente } from "@/lib/actions/parametricas";
 import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import type { Cliente } from "@/types";
 import { TipoCliente, FrecuenciaCliente } from "@/types";
@@ -48,6 +49,7 @@ import { TipoCliente, FrecuenciaCliente } from "@/types";
 export default function ClientesPage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
+    const [tiposCliente, setTiposCliente] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDialog, setShowDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -67,7 +69,7 @@ export default function ClientesPage() {
         email: "",
         direccion: "",
         ciudad: "",
-        tipoCliente: TipoCliente.RESIDENCIAL,
+        tipoCliente: "",
         frecuenciaPreferida: FrecuenciaCliente.UNICA,
         notasImportantes: ""
     });
@@ -83,10 +85,14 @@ export default function ClientesPage() {
     const cargarDatos = async () => {
         try {
             setLoading(true);
-            const data = await obtenerClientes();
+            const [data, tipos] = await Promise.all([
+                obtenerClientes(),
+                obtenerTiposCliente()
+            ]);
             setClientes(data);
+            setTiposCliente(tipos);
         } catch (error) {
-            console.error("Error cargando clientes:", error);
+            console.error("Error cargando datos:", error);
         } finally {
             setLoading(false);
         }
@@ -95,7 +101,6 @@ export default function ClientesPage() {
     const aplicarFiltros = () => {
         let resultado = [...clientes];
 
-        // Filtro por búsqueda global (Nombre, Email, Teléfono)
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
             resultado = resultado.filter(c =>
@@ -105,14 +110,16 @@ export default function ClientesPage() {
             );
         }
 
-        // Filtro por Ciudad
         if (filters.ciudad !== "todas") {
             resultado = resultado.filter(c => c.ciudad === filters.ciudad);
         }
 
-        // Filtro por Tipo de Cliente
         if (filters.tipo !== "todos") {
-            resultado = resultado.filter(c => c.tipoCliente === filters.tipo);
+            // Comparación laxa para soportar tipos antiguos vs nuevos IDs
+            resultado = resultado.filter(c =>
+                c.tipoCliente?.toLowerCase() === filters.tipo.toLowerCase() ||
+                tiposCliente.find(t => t.$id === filters.tipo && t.nombre.toLowerCase() === c.tipoCliente?.toLowerCase())
+            );
         }
 
         setFilteredClientes(resultado);
@@ -126,7 +133,7 @@ export default function ClientesPage() {
             email: cliente.email,
             direccion: cliente.direccion,
             ciudad: cliente.ciudad,
-            tipoCliente: cliente.tipoCliente,
+            tipoCliente: cliente.tipoCliente || "",
             frecuenciaPreferida: cliente.frecuenciaPreferida || FrecuenciaCliente.UNICA,
             notasImportantes: cliente.notasImportantes || ""
         });
@@ -142,7 +149,7 @@ export default function ClientesPage() {
             email: "",
             direccion: "",
             ciudad: "",
-            tipoCliente: TipoCliente.RESIDENCIAL,
+            tipoCliente: tiposCliente.length > 0 ? tiposCliente[0].nombre : "Residencial",
             frecuenciaPreferida: FrecuenciaCliente.UNICA,
             notasImportantes: ""
         });
@@ -152,28 +159,21 @@ export default function ClientesPage() {
 
     const handleSubmit = async () => {
         try {
+            const payload = {
+                nombre: formData.nombre,
+                telefono: formData.telefono,
+                email: formData.email,
+                direccion: formData.direccion,
+                ciudad: formData.ciudad,
+                tipoCliente: formData.tipoCliente,
+                frecuenciaPreferida: formData.frecuenciaPreferida,
+                notasImportantes: formData.notasImportantes
+            };
+
             if (isEditing) {
-                await actualizarCliente(formData.id, {
-                    nombre: formData.nombre,
-                    telefono: formData.telefono,
-                    email: formData.email,
-                    direccion: formData.direccion,
-                    ciudad: formData.ciudad,
-                    tipoCliente: formData.tipoCliente,
-                    frecuenciaPreferida: formData.frecuenciaPreferida,
-                    notasImportantes: formData.notasImportantes
-                });
+                await actualizarCliente(formData.id, payload);
             } else {
-                await crearCliente({
-                    nombre: formData.nombre,
-                    telefono: formData.telefono,
-                    email: formData.email,
-                    direccion: formData.direccion,
-                    ciudad: formData.ciudad,
-                    tipoCliente: formData.tipoCliente,
-                    frecuenciaPreferida: formData.frecuenciaPreferida,
-                    notasImportantes: formData.notasImportantes
-                });
+                await crearCliente(payload);
             }
             setShowDialog(false);
             cargarDatos();
@@ -183,7 +183,7 @@ export default function ClientesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm("¿Estás seguro de eliminar este cliente? Esta acción no se puede deshacer.")) {
+        if (confirm("¿Estás seguro de eliminar este cliente?")) {
             try {
                 await eliminarCliente(id);
                 cargarDatos();
@@ -193,13 +193,17 @@ export default function ClientesPage() {
         }
     };
 
-    // Obtener listas únicas para los filtros
     const ciudades = Array.from(new Set(clientes.map(c => c.ciudad))).filter(Boolean).sort();
 
-    // Stats
+    // Stats Dinámicos
     const totalClientes = clientes.length;
     const clientesActivos = clientes.filter(c => c.activo).length;
-    const totalResidencial = clientes.filter(c => c.tipoCliente === TipoCliente.RESIDENCIAL).length;
+    // Agrupamos por tipo (normalizando strings)
+    const statsPorTipo = clientes.reduce((acc: any, curr) => {
+        const tipo = curr.tipoCliente || 'Sin Tipo';
+        acc[tipo] = (acc[tipo] || 0) + 1;
+        return acc;
+    }, {});
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -232,39 +236,32 @@ export default function ClientesPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md bg-white">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-gray-500 font-medium text-sm flex items-center">
-                            <Home className="mr-2 h-4 w-4" /> Residenciales
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-gray-900">{totalResidencial}</div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                            <div
-                                className="bg-blue-500 h-full rounded-full"
-                                style={{ width: `${totalClientes ? (totalResidencial / totalClientes) * 100 : 0}%` }}
-                            ></div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-md bg-white">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-gray-500 font-medium text-sm flex items-center">
-                            <Building2 className="mr-2 h-4 w-4" /> Comerciales
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-gray-900">{totalClientes - totalResidencial}</div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                            <div
-                                className="bg-indigo-500 h-full rounded-full"
-                                style={{ width: `${totalClientes ? ((totalClientes - totalResidencial) / totalClientes) * 100 : 0}%` }}
-                            ></div>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Stats for Types - Dynamic now */}
+                {Object.entries(statsPorTipo).slice(0, 2).map(([tipo, count], idx) => (
+                    <Card key={tipo} className="border-none shadow-md bg-white">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-gray-500 font-medium text-sm flex items-center capitalize">
+                                {idx === 0 ? <Home className="mr-2 h-4 w-4" /> : <Building2 className="mr-2 h-4 w-4" />}
+                                {tipo}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-gray-900">{count as number}</div>
+                            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full ${idx === 0 ? 'bg-blue-500' : 'bg-indigo-500'}`}
+                                    style={{ width: `${totalClientes ? ((count as number) / totalClientes) * 100 : 0}%` }}
+                                ></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+                {/* Fill empty card if fewer than 2 types */}
+                {Object.keys(statsPorTipo).length < 2 && (
+                    <Card className="border-none shadow-md bg-gray-50/50 border-dashed border-2 border-gray-200 flex items-center justify-center">
+                        <p className="text-gray-400 text-sm">Más estadísticas pronto...</p>
+                    </Card>
+                )}
             </div>
 
             {/* Filters Toolbar */}
@@ -289,11 +286,12 @@ export default function ClientesPage() {
                     <select
                         value={filters.tipo}
                         onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
-                        className="h-9 px-3 bg-gray-50 border-gray-200 border rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                        className="h-9 px-3 bg-gray-50 border-gray-200 border rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-w-[140px]"
                     >
                         <option value="todos">Todos los Tipos</option>
-                        <option value={TipoCliente.RESIDENCIAL}>Residencial</option>
-                        <option value={TipoCliente.COMERCIAL}>Comercial</option>
+                        {tiposCliente.map(t => (
+                            <option key={t.$id} value={t.nombre}>{t.nombre}</option>
+                        ))}
                     </select>
                 </div>
 
@@ -344,14 +342,20 @@ export default function ClientesPage() {
                                 </TableRow>
                             ) : (
                                 filteredClientes.map((cliente) => (
-                                    <TableRow key={cliente.$id} className="hover:bg-gray-50/50 transition-colors group">
+                                    <TableRow
+                                        key={cliente.$id}
+                                        className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                        onClick={() => window.location.href = `/admin/clientes/${cliente.$id}`}
+                                    >
                                         <TableCell className="pl-6">
                                             <div className="flex items-center space-x-3">
                                                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
                                                     {cliente.nombre.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-gray-900">{cliente.nombre}</div>
+                                                    <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                        {cliente.nombre}
+                                                    </div>
                                                     <div className="text-xs text-gray-500">ID: ...{cliente.$id.slice(-4)}</div>
                                                 </div>
                                             </div>
@@ -375,20 +379,13 @@ export default function ClientesPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge
-                                                variant="outline"
-                                                className={
-                                                    cliente.tipoCliente === TipoCliente.RESIDENCIAL
-                                                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                        : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                                }
-                                            >
-                                                {cliente.tipoCliente}
+                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 capitalize">
+                                                {cliente.tipoCliente || 'Sin Asignar'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                {cliente.totalServicios}
+                                                {cliente.totalServicios || 0}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
@@ -417,9 +414,9 @@ export default function ClientesPage() {
                 </CardContent>
             </Card>
 
-            {/* Create/Edit Dialog */}
+            {/* Create/Edit Dialog Premium */}
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{isEditing ? "Editar Cliente" : "Nuevo Cliente"}</DialogTitle>
                         <DialogDescription>
@@ -427,80 +424,128 @@ export default function ClientesPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <Label>Nombre Completo</Label>
-                                <Input
-                                    value={formData.nombre}
-                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                    placeholder="Ej: Juan Pérez"
-                                />
-                            </div>
+                    <div className="grid gap-6 py-4">
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider border-b pb-1">Información Personal</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <Label>Nombre Completo</Label>
+                                    <Input
+                                        value={formData.nombre}
+                                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                        placeholder="Ej: Juan Pérez"
+                                        className="mt-1.5"
+                                    />
+                                </div>
 
-                            <div>
-                                <Label>Teléfono</Label>
-                                <Input
-                                    value={formData.telefono}
-                                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                                    placeholder="300 123 4567"
-                                />
-                            </div>
+                                <div>
+                                    <Label>Teléfono</Label>
+                                    <div className="relative mt-1.5">
+                                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input
+                                            value={formData.telefono}
+                                            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                                            placeholder="300 123 4567"
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
 
-                            <div>
-                                <Label>Email</Label>
-                                <Input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="juan@ejemplo.com"
-                                />
+                                <div>
+                                    <Label>Email</Label>
+                                    <div className="relative mt-1.5">
+                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            placeholder="juan@ejemplo.com"
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
                             </div>
+                        </div>
 
-                            <div className="col-span-2">
-                                <Label>Dirección</Label>
-                                <Input
-                                    value={formData.direccion}
-                                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                                    placeholder="Calle 123 # 45-67"
-                                />
-                            </div>
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider border-b pb-1">Ubicación y Perfil</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <Label>Dirección</Label>
+                                    <div className="relative mt-1.5">
+                                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input
+                                            value={formData.direccion}
+                                            onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                                            placeholder="Calle 123 # 45-67"
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
 
-                            <div>
-                                <Label>Ciudad</Label>
-                                <Input
-                                    value={formData.ciudad}
-                                    onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                                    placeholder="Bogotá"
-                                />
-                            </div>
+                                <div>
+                                    <Label>Ciudad</Label>
+                                    <Input
+                                        list="ciudades-list"
+                                        value={formData.ciudad}
+                                        onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+                                        placeholder="Escribe o selecciona..."
+                                        className="mt-1.5"
+                                    />
+                                    <datalist id="ciudades-list">
+                                        <option value="Bogotá" />
+                                        <option value="Medellín" />
+                                        <option value="Cali" />
+                                        <option value="Barranquilla" />
+                                        <option value="Cartagena" />
+                                        <option value="Bucaramanga" />
+                                        <option value="Pereira" />
+                                        <option value="Manizales" />
+                                    </datalist>
+                                </div>
 
-                            <div>
-                                <Label>Tipo Cliente</Label>
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={formData.tipoCliente}
-                                    onChange={(e) => setFormData({ ...formData, tipoCliente: e.target.value as TipoCliente })}
-                                >
-                                    <option value={TipoCliente.RESIDENCIAL}>Residencial</option>
-                                    <option value={TipoCliente.COMERCIAL}>Comercial</option>
-                                </select>
-                            </div>
+                                <div>
+                                    <Label>Tipo Cliente</Label>
+                                    <div className="relative mt-1.5">
+                                        <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 z-10" />
+                                        <select
+                                            className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            value={formData.tipoCliente}
+                                            onChange={(e) => setFormData({ ...formData, tipoCliente: e.target.value })}
+                                        >
+                                            <option value="" disabled>Seleccionar Tipo</option>
+                                            {tiposCliente.length > 0 ? (
+                                                tiposCliente.map(t => (
+                                                    <option key={t.$id} value={t.nombre}>{t.nombre}</option>
+                                                ))
+                                            ) : (
+                                                <>
+                                                    <option value="Residencial">Residencial</option>
+                                                    <option value="Comercial">Comercial</option>
+                                                </>
+                                            )}
+                                        </select>
+                                    </div>
+                                </div>
 
-                            <div className="col-span-2">
-                                <Label>Notas Adicionales</Label>
-                                <Input
-                                    value={formData.notasImportantes}
-                                    onChange={(e) => setFormData({ ...formData, notasImportantes: e.target.value })}
-                                    placeholder="Preferencias, accessos, etc."
-                                />
+                                <div className="col-span-2">
+                                    <Label>Notas Adicionales</Label>
+                                    <Input
+                                        value={formData.notasImportantes}
+                                        onChange={(e) => setFormData({ ...formData, notasImportantes: e.target.value })}
+                                        placeholder="Preferencias, accessos, etc."
+                                        className="mt-1.5"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
-                        <Button onClick={handleSubmit}>{isEditing ? "Guardar Cambios" : "Crear Cliente"}</Button>
+                        <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 min-w-[150px]">
+                            {isEditing ? "Guardar Cambios" : "Crear Cliente"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

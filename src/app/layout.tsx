@@ -1,17 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/hooks/useAuth";
+import { CompanyProvider } from "@/context/CompanyContext";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AltioraClean - Servicios de Limpieza Profesional",
-  description: "Servicios de limpieza residencial y comercial de alta calidad",
+  title: "DieselParts - Repuestos para Maquinaria Diesel",
+  description: "Tu socio en repuestos diesel - Filtros, bombas, turbocompresores y más",
   manifest: "/manifest.json",
-  themeColor: "#0ea5e9",
-  viewport: "minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1E40AF",
+  width: "device-width",
+  initialScale: 1,
+  minimumScale: 1,
 };
 
 export default function RootLayout({
@@ -23,7 +29,9 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
+          <CompanyProvider>
+            {children}
+          </CompanyProvider>
         </AuthProvider>
         <Toaster />
       </body>

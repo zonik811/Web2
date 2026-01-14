@@ -266,35 +266,97 @@ export default function DetalleCitaPage() {
                     </Card>
 
                     {/* Service Details */}
-                    <Card className="border-gray-200 shadow-sm overflow-hidden">
-                        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
-                                <CalendarIcon className="h-5 w-5 text-primary" />
-                                Detalles del Servicio
-                            </CardTitle>
+                    <Card className="border-gray-200 shadow-sm overflow-hidden border-t-4 border-t-primary">
+                        <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 pb-4">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                                    <CalendarIcon className="h-5 w-5 text-primary" />
+                                    Detalles del Servicio
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                    {cita.categoriaSeleccionada ? (
+                                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors border-primary/20 border">
+                                            {cita.categoriaSeleccionada}
+                                        </Badge>
+                                    ) : cita.servicio?.categorias && cita.servicio.categorias.length > 0 ? (
+                                        cita.servicio.categorias.map((cat, index) => (
+                                            <Badge
+                                                key={index}
+                                                variant="secondary"
+                                                className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                            >
+                                                {cat}
+                                            </Badge>
+                                        ))
+                                    ) : cita.servicio?.categoria ? (
+                                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                                            {cita.servicio.categoria}
+                                        </Badge>
+                                    ) : null}
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            {/* Service Name Highlight */}
+                            <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</label>
-                                    <div className="mt-1 font-medium text-gray-900 flex items-center gap-2">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Servicio Solicitado</label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-white rounded-lg shadow-sm">
+                                            {(cita.servicio?.categorias?.includes("Mantenimiento") || cita.servicio?.categoria === "Mantenimiento") ? (
+                                                <CheckCircle className="h-5 w-5 text-emerald-500" />
+                                            ) : (cita.servicio?.categorias?.includes("Limpieza") || cita.servicio?.categoria === "Limpieza") ? (
+                                                <CheckCircle className="h-5 w-5 text-blue-500" />
+                                            ) : (
+                                                <FileText className="h-5 w-5 text-primary" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-gray-900 leading-none">
+                                                {cita.servicio?.nombre || "Servicio Personalizado"}
+                                            </h3>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                ID: {cita.servicioId}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-bold text-gray-900">{formatearPrecio(cita.precioCliente)}</div>
+                                    <span className="text-xs text-gray-500 font-medium bg-gray-200 px-2 py-0.5 rounded-full">Base</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <CalendarIcon className="h-3.5 w-3.5" /> Fecha
+                                    </label>
+                                    <div className="font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm shadow-sm">
                                         {formatearFecha(cita.fechaCita)}
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Hora</label>
-                                    <div className="mt-1 font-medium text-gray-900 flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-gray-400" />
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <Clock className="h-3.5 w-3.5" /> Hora
+                                    </label>
+                                    <div className="font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm shadow-sm">
                                         {cita.horaCita}
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Duración</label>
-                                    <div className="mt-1 font-medium text-gray-900">{cita.duracionEstimada} min</div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <Clock className="h-3.5 w-3.5" /> Duración
+                                    </label>
+                                    <div className="font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm shadow-sm">
+                                        {cita.duracionEstimada} min
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Espacios</label>
-                                    <div className="mt-1 font-medium text-gray-900">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <Building className="h-3.5 w-3.5" /> Espacios
+                                    </label>
+                                    <div className="font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm shadow-sm">
                                         {cita.habitaciones} Hab • {cita.banos} Baños
                                     </div>
                                 </div>
@@ -302,22 +364,28 @@ export default function DetalleCitaPage() {
 
                             {(cita.detallesAdicionales || cita.notasInternas) && (
                                 <>
-                                    <Separator className="my-6" />
-                                    <div className="space-y-4">
+                                    <Separator className="my-6 block" />
+                                    <div className="grid md:grid-cols-2 gap-4">
                                         {cita.detallesAdicionales && (
-                                            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                                                <h4 className="text-sm font-semibold text-amber-800 mb-1 flex items-center gap-2">
+                                            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 relative group transition-all hover:shadow-sm">
+                                                <div className="absolute top-4 right-4 text-amber-300 group-hover:text-amber-400 transition-colors">
+                                                    <FileText className="h-8 w-8 opacity-20" />
+                                                </div>
+                                                <h4 className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
                                                     <FileText className="h-4 w-4" /> Notas del Cliente
                                                 </h4>
-                                                <p className="text-sm text-amber-900">{cita.detallesAdicionales}</p>
+                                                <p className="text-sm text-amber-900/90 leading-relaxed font-medium">{cita.detallesAdicionales}</p>
                                             </div>
                                         )}
                                         {cita.notasInternas && (
-                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                                                <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 relative group transition-all hover:shadow-sm">
+                                                <div className="absolute top-4 right-4 text-blue-300 group-hover:text-blue-400 transition-colors">
+                                                    <AlertCircle className="h-8 w-8 opacity-20" />
+                                                </div>
+                                                <h4 className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
                                                     <AlertCircle className="h-4 w-4" /> Notas Internas
                                                 </h4>
-                                                <p className="text-sm text-gray-600">{cita.notasInternas}</p>
+                                                <p className="text-sm text-blue-900/90 leading-relaxed font-medium">{cita.notasInternas}</p>
                                             </div>
                                         )}
                                     </div>
@@ -341,7 +409,7 @@ export default function DetalleCitaPage() {
                             <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
                                 <label className="text-xs font-semibold text-primary/70 uppercase tracking-wider">Total a Cobrar</label>
                                 <div className="text-3xl font-bold text-gray-900 mt-1">
-                                    {formatearPrecio(cita.precioAcordado)}
+                                    {formatearPrecio(cita.precioCliente)}
                                 </div>
                             </div>
 

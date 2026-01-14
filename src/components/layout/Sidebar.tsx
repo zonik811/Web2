@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import {
     LayoutDashboard,
     Calendar,
+    Wrench,
+    Car,
     Users,
     UserCircle,
     DollarSign,
@@ -13,25 +15,36 @@ import {
     BarChart3,
     LogOut,
     TrendingDown,
+    Settings,
+    Package,
+    ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationToggle } from "@/components/ui/notification-toggle";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useCompany } from "@/context/CompanyContext";
 
 const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Citas", href: "/admin/citas", icon: Calendar },
+    { name: "Órdenes", href: "/admin/ordenes-trabajo", icon: Wrench },
+    { name: "Vehículos", href: "/admin/vehiculos", icon: Car },
     { name: "Personal", href: "/admin/personal", icon: Users },
     { name: "Clientes", href: "/admin/clientes", icon: UserCircle },
     { name: "Pagos", href: "/admin/pagos", icon: DollarSign },
     { name: "Gastos", href: "/admin/gastos", icon: TrendingDown },
+    { name: "Inventario", href: "/admin/inventario", icon: Package },
+    { name: "Ventas", href: "/admin/ventas", icon: ShoppingBag },
     { name: "Servicios", href: "/admin/servicios", icon: Sparkles },
     { name: "Reportes", href: "/admin/reportes", icon: BarChart3 },
+    { name: "Configuración", href: "/admin/configuracion", icon: Settings },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
     const { logout, user } = useAuth();
+    const { config } = useCompany();
+    const companyName = config?.nombre || 'DieselParts';
 
     const handleLogout = async () => {
         try {
@@ -51,7 +64,7 @@ export function Sidebar() {
                         <Sparkles className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold">Limpieza Pro</h1>
+                        <h1 className="text-lg font-bold">{companyName}</h1>
                         <p className="text-xs text-slate-400">Panel Admin</p>
                     </div>
                 </div>

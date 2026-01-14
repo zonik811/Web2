@@ -252,7 +252,7 @@ export default function CitasPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="font-bold text-gray-900 text-base">
-                                                        {formatearPrecio(cita.precioAcordado)}
+                                                        {formatearPrecio(cita.precioAcordado || cita.precioCliente)}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>

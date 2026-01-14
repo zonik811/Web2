@@ -1,7 +1,7 @@
 "use server";
 
-import { databases } from "@/lib/appwrite-admin";
-import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
+import { databases, storage } from "@/lib/appwrite-admin";
+import { DATABASE_ID, COLLECTIONS, STORAGE_BUCKET_ID } from "@/lib/appwrite";
 import { Query, ID } from "node-appwrite";
 
 export interface RegistrarPagoInput {
@@ -73,7 +73,7 @@ export async function registrarPago(data: RegistrarPagoInput): Promise<{ success
             pagoData
         );
 
-        console.log(`✅ Pago registrado: $${data.monto} para empleado ${data.empleadoId}`);
+
         return { success: true, data: newPago as unknown as Pago };
     } catch (error: any) {
         console.error("❌ Error registrando pago:", error);
@@ -86,13 +86,24 @@ export async function registrarPago(data: RegistrarPagoInput): Promise<{ success
  */
 export async function eliminarPago(pagoId: string): Promise<{ success: boolean; error?: string }> {
     try {
+        const pago = await databases.getDocument(DATABASE_ID, COLLECTIONS.PAGOS_EMPLEADOS, pagoId);
+
+        if (pago.comprobante) {
+            try {
+                await storage.deleteFile(STORAGE_BUCKET_ID, pago.comprobante);
+
+            } catch (storageError) {
+                console.error(`⚠️ Error eliminando comprobante ${pago.comprobante}:`, storageError);
+            }
+        }
+
         await databases.deleteDocument(
             DATABASE_ID,
             COLLECTIONS.PAGOS_EMPLEADOS,
             pagoId
         );
 
-        console.log(`✅ Pago eliminado: ${pagoId}`);
+
         return { success: true };
     } catch (error: any) {
         console.error("❌ Error eliminando pago:", error);

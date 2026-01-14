@@ -35,8 +35,7 @@ export async function obtenerEmpleados(
             queries.push(Query.contains("especialidades", filtros.especialidad));
         }
 
-        // Ordenar por fecha de creación descendente
-        queries.push(Query.orderDesc("createdAt"));
+
 
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -48,6 +47,7 @@ export async function obtenerEmpleados(
     } catch (error: any) {
         console.error("Error obteniendo empleados:", error);
         throw new Error(error.message || "Error al obtener empleados");
+        return [];
     }
 }
 
@@ -114,8 +114,6 @@ export async function crearEmpleado(
             activo: true,
             calificacionPromedio: 0,
             totalServicios: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
         };
 
         const newEmpleado = await databases.createDocument(
@@ -148,7 +146,6 @@ export async function actualizarEmpleado(
     try {
         const updateData = {
             ...data,
-            updatedAt: new Date().toISOString(),
         };
 
         await databases.updateDocument(
@@ -174,7 +171,7 @@ export async function actualizarEmpleado(
  */
 export async function recalcularServiciosEmpleado(empleadoId: string): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
-        console.log(`🔄 Recalculando servicios para empleado: ${empleadoId}`);
+
 
         // Contar citas completadas con este empleado asignado
         const citasCompletadas = await databases.listDocuments(
@@ -187,20 +184,16 @@ export async function recalcularServiciosEmpleado(empleadoId: string): Promise<{
         );
 
         const count = citasCompletadas.total;
-        console.log(`📊 Empleado ${empleadoId}: ${count} servicios completados`);
-        console.log(`📋 IDs de citas encontradas:`, citasCompletadas.documents.map((c: any) => c.$id));
 
         // Actualizar el contador
-        console.log(`💾 Intentando actualizar BD: serviciosRealizados = ${count}`);
         const updateResult = await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.EMPLEADOS,
             empleadoId,
-            { serviciosRealizados: count }
+            { totalServicios: count }
         );
 
-        console.log(`✅ Actualización confirmada. Valor en BD:`, updateResult.serviciosRealizados);
-        console.log(`✅ Empleado ${empleadoId} actualizado: serviciosRealizados = ${count}`);
+
         return { success: true, count };
     } catch (error: any) {
         console.error(`❌ Error recalculando servicios de empleado ${empleadoId}:`, error);
@@ -272,18 +265,43 @@ export async function obtenerEstadisticasEmpleado(
             ]
         );
 
+        // Obtener comisiones del empleado (pendientes y pagadas)
+        // Para calcular pendiente por pagar, sumamos las comisiones PENDIENTES al saldo
+        // O más fácil: Total Ganado (Servicios + Comisiones) - Total Pagado
+
+        // Vamos a sumar comisiones al Total Ganado
+        const comisiones = await databases.listDocuments(
+            DATABASE_ID,
+            'comisiones', // Hardcoding collection ID as it might not be in config yet
+            [
+                Query.equal('empleadoId', empleadoId)
+            ]
+        );
+
         // Calcular total pagado
         const totalPagado = pagos.documents.reduce((total: number, pago: any) => {
             return total + (pago.monto || 0);
         }, 0);
 
-        // Calcular total ganado histórico usando horasTrabajadas
-        const totalGanado = citasCompletadas.documents.reduce((total: number, cita: any) => {
+        // Calcular total ganado histórico usando horasTrabajadas + Comisiones
+        const ganadoServicios = citasCompletadas.documents.reduce((total: number, cita: any) => {
             const horas = cita.horasTrabajadas || 8;
             return total + (horas * empleado.tarifaPorHora);
         }, 0);
 
+        const ganadoComisiones = comisiones.documents.reduce((total: number, com: any) => {
+            return total + (com.monto || 0);
+        }, 0);
+
+        const totalGanado = ganadoServicios + ganadoComisiones;
+
         // Pendiente por pagar = Total Ganado - Total Pagado
+        // Nota: Esto asume que cuando se paga una comisión, se crea un registro en PAGOS_EMPLEADOS
+        // Si el sistema de comisiones es independiente (se marcan como pagadas in-situ), la lógica sería diferente.
+        // Asumamos que "pendientePorPagar" es una guía. 
+        // Si PAGOS_EMPLEADOS es la fuente de verdad de salida de dinero:
+        // Pendiente = (Servicios + Comisiones) - PagosRegistrados.
+        // Esto funciona.
         const pendientePorPagar = totalGanado - totalPagado;
 
         return {

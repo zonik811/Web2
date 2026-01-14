@@ -19,18 +19,22 @@ import {
     Clock,
     FileText,
     CheckCircle2,
-    Sparkles
+    Sparkles,
+    Briefcase
 } from "lucide-react";
 import Link from "next/link";
 import { crearCita } from "@/lib/actions/citas";
-import { obtenerDireccionesCliente, crearDireccion } from "@/lib/actions/direcciones";
+import { obtenerDireccionesCliente } from "@/lib/actions/direcciones";
 import { TipoPropiedad, MetodoPago, Direccion } from "@/types";
 import { calcularDuracionEstimada } from "@/lib/utils/precio-calculator";
-import { useAuth } from "@/lib/hooks/useAuth"; // Import Auth Hook
+import { useAuth } from "@/lib/hooks/useAuth";
+import { obtenerCategorias } from "@/lib/actions/categorias";
+import { obtenerServicios } from "@/lib/actions/catalogo";
+import { ServiceSelector } from "@/components/citas/ServiceSelector";
 
 export default function AgendarPage() {
     const router = useRouter();
-    const { user, profile } = useAuth(); // Get user and profile
+    const { user, profile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
@@ -40,8 +44,14 @@ export default function AgendarPage() {
     const [savedAddresses, setSavedAddresses] = useState<Direccion[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
 
+    // Dynamic Data State
+    const [categorias, setCategorias] = useState<any[]>([]);
+    const [servicios, setServicios] = useState<any[]>([]);
+    const [selectedService, setSelectedService] = useState<any>(null);
+
     const [formData, setFormData] = useState({
-        servicioId: "servicio-basico",
+        servicioId: "",
+        categoriaSeleccionada: "",
         clienteNombre: "",
         clienteTelefono: "",
         clienteEmail: "",
@@ -54,6 +64,7 @@ export default function AgendarPage() {
         fechaCita: "",
         horaCita: "",
         detallesAdicionales: "",
+        direccionId: undefined as string | undefined,
     });
 
     // Auto-fill form data if user is logged in
@@ -68,7 +79,6 @@ export default function AgendarPage() {
                 ciudad: profile.ciudad || "Bogotá",
             }));
         } else if (user) {
-            // Fallback if no specific client profile but user is logged in (e.g. just registered)
             setFormData(prev => ({
                 ...prev,
                 clienteNombre: user.name || "",
@@ -76,6 +86,23 @@ export default function AgendarPage() {
             }));
         }
     }, [user, profile]);
+
+    // Fetch Initial Data (Categories & Services)
+    useEffect(() => {
+        const loadCatalogo = async () => {
+            try {
+                const [cats, servs] = await Promise.all([
+                    obtenerCategorias(),
+                    obtenerServicios()
+                ]);
+                setCategorias(cats);
+                setServicios(servs);
+            } catch (error) {
+                console.error("Error loading catalog:", error);
+            }
+        };
+        loadCatalogo();
+    }, []);
 
     // Fetch saved addresses for logged-in users
     useEffect(() => {
@@ -93,11 +120,10 @@ export default function AgendarPage() {
         setSelectedAddressId(addressId);
 
         if (addressId === "new") {
-            // Reset address fields and remove direccionId
             setFormData(prev => ({
                 ...prev,
                 direccion: "",
-                direccionId: undefined, // Clear any previous direccionId
+                direccionId: undefined,
             }));
         } else {
             const addr = savedAddresses.find(a => a.$id === addressId);
@@ -107,7 +133,7 @@ export default function AgendarPage() {
                     direccion: addr.direccion,
                     ciudad: addr.ciudad,
                     tipoPropiedad: addr.tipo,
-                    direccionId: addr.$id, // CRITICAL: Include direccionId so backend knows it's saved
+                    direccionId: addr.$id,
                 }));
             }
         }
@@ -115,48 +141,39 @@ export default function AgendarPage() {
 
     // Cálculo dinámico del precio estimado
     const precioEstimado = useMemo(() => {
-        let precioBase = 0;
+        if (!selectedService) return 0;
 
-        // Precio base según tipo de propiedad
-        switch (formData.tipoPropiedad) {
-            case TipoPropiedad.APARTAMENTO:
-                precioBase = 93000; // Más económico
-                break;
-            case TipoPropiedad.CASA:
-                precioBase = 105000;
-                break;
-            case TipoPropiedad.OFICINA:
-                precioBase = 120000; // Más caro
-                break;
-            case TipoPropiedad.LOCAL:
-                precioBase = 150000; // Comercial más caro
-                break;
-            default:
-                precioBase = 100000;
-        }
+        let precio = selectedService.precioBase || 0;
 
-        // Ajuste por metros cuadrados
-        if (formData.metrosCuadrados > 0) {
-            if (formData.metrosCuadrados > 100) {
-                precioBase += (formData.metrosCuadrados - 100) * 500; // $500 por m² adicional
+        // Lógica heurística para determinar si cobrar variables
+        // Idealmente esto vendría de una bandera en BD (ej. cobraVariables: true)
+        const isVariablePrice = selectedService.categoria === "Residencial" ||
+            (selectedService.slug && selectedService.slug.includes("limpieza"));
+
+        if (isVariablePrice) {
+            // Ajuste por metros cuadrados
+            if (formData.metrosCuadrados > 0) {
+                if (formData.metrosCuadrados > 100) {
+                    precio += (formData.metrosCuadrados - 100) * 500;
+                }
+                if (formData.metrosCuadrados > 200) {
+                    precio += (formData.metrosCuadrados - 200) * 300;
+                }
             }
-            if (formData.metrosCuadrados > 200) {
-                precioBase += (formData.metrosCuadrados - 200) * 300; // Tarifa reducida
+
+            // Ajuste por habitaciones
+            if (formData.habitaciones > 3) {
+                precio += (formData.habitaciones - 3) * 10000;
+            }
+
+            // Ajuste por baños
+            if (formData.banos > 2) {
+                precio += (formData.banos - 2) * 8000;
             }
         }
 
-        // Ajuste por habitaciones
-        if (formData.habitaciones > 3) {
-            precioBase += (formData.habitaciones - 3) * 10000;
-        }
-
-        // Ajuste por baños
-        if (formData.banos > 2) {
-            precioBase += (formData.banos - 2) * 8000;
-        }
-
-        return precioBase;
-    }, [formData.tipoPropiedad, formData.metrosCuadrados, formData.habitaciones, formData.banos]);
+        return precio;
+    }, [selectedService, formData.metrosCuadrados, formData.habitaciones, formData.banos]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -164,28 +181,21 @@ export default function AgendarPage() {
         setLoading(true);
 
         try {
-            const duracionEstimada = calcularDuracionEstimada({
-                tipoPropiedad: formData.tipoPropiedad,
-                metrosCuadrados: formData.metrosCuadrados,
-                habitaciones: formData.habitaciones,
-                tipoServicio: "basico",
-            });
+            const duracionEstimada = selectedService ? selectedService.duracionEstimada : 60;
 
-            // Backend now handles both client AND address creation automatically
             const response = await crearCita({
                 ...formData,
                 duracionEstimada,
                 precioCliente: precioEstimado,
                 metodoPago: "por_cobrar" as MetodoPago,
-                servicioId: "limpieza-general",
-                clienteId: profile?.$id, // Enviar ID si el usuario está logueado para evitar duplicados
+                clienteId: profile?.$id,
+                categoriaSeleccionada: selectedService?.categoria,
             });
 
             if (response.success) {
                 setSuccess(true);
                 setTimeout(() => {
-                    // Redirect to client dashboard instead of home
-                    router.push("/portal/dashboard?refresh=" + Date.now());
+                    router.push("/mi-cuenta?tab=citas&refresh=" + Date.now());
                 }, 3000);
             } else {
                 setError(response.error || "Error al crear la cita");
@@ -198,9 +208,10 @@ export default function AgendarPage() {
     };
 
     const steps = [
-        { number: 1, title: "Contacto", icon: User },
-        { number: 2, title: "Ubicación", icon: MapPin },
-        { number: 3, title: "Fecha & Hora", icon: Calendar },
+        { number: 1, title: "Servicio", icon: Briefcase },
+        { number: 2, title: "Contacto", icon: User },
+        { number: 3, title: "Ubicación", icon: MapPin },
+        { number: 4, title: "Fecha & Hora", icon: Calendar },
     ];
 
     if (success) {
@@ -310,329 +321,390 @@ export default function AgendarPage() {
                     <div className="max-w-3xl mx-auto">
                         <form onSubmit={handleSubmit}>
                             <div className="space-y-6">
-                                {/* Paso 1: Información de Contacto */}
-                                <Card className={`border-2 transition-all backdrop-blur-xl bg-white/70 shadow-xl ${currentStep === 1 ? 'border-primary scale-[1.02]' : 'border-white/50'}`}>
-                                    <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-                                                <User className="h-6 w-6 text-white" />
+
+                                {/* Paso 1: Selección de Servicio */}
+                                <div className={currentStep === 1 ? 'block' : 'hidden'}>
+                                    <Card className="border-2 border-primary/20 backdrop-blur-xl bg-white/70 shadow-xl">
+                                        <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
+                                                    <Briefcase className="h-6 w-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-2xl">Selecciona tu Servicio</CardTitle>
+                                                    <p className="text-sm text-gray-600 mt-1">Elige qué necesitas para hoy</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <CardTitle className="text-2xl">Información de Contacto</CardTitle>
-                                                <p className="text-sm text-gray-600 mt-1">Datos para comunicarnos contigo</p>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6 pt-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="clienteNombre" className="text-base flex items-center space-x-2">
-                                                <User className="h-4 w-4 text-primary" />
-                                                <span>Nombre Completo *</span>
-                                            </Label>
-                                            <Input
-                                                id="clienteNombre"
-                                                required
-                                                placeholder="Ej: Juan Pérez"
-                                                className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                value={formData.clienteNombre}
-                                                onChange={(e) => setFormData({ ...formData, clienteNombre: e.target.value })}
-                                                onClick={() => setCurrentStep(1)}
+                                        </CardHeader>
+                                        <CardContent className="pt-6">
+                                            <ServiceSelector
+                                                categorias={categorias}
+                                                servicios={servicios}
+                                                selectedServiceId={formData.servicioId}
+                                                onSelectService={(service: any) => {
+                                                    setSelectedService(service);
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        servicioId: service.$id,
+                                                        detallesAdicionales: (!prev.detallesAdicionales && service.descripcionCorta)
+                                                            ? service.descripcionCorta
+                                                            : prev.detallesAdicionales
+                                                    }));
+                                                    setTimeout(() => setCurrentStep(2), 300);
+                                                }}
                                             />
-                                        </div>
+                                        </CardContent>
+                                        <CardContent className="border-t pt-4 flex justify-end">
+                                            <Button
+                                                type="button"
+                                                onClick={() => setCurrentStep(2)}
+                                                disabled={!formData.servicioId}
+                                            >
+                                                Continuar
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Paso 2: Información de Contacto */}
+                                <div className={currentStep === 2 ? 'block' : 'hidden'}>
+                                    <Card className="border-2 border-primary/20 backdrop-blur-xl bg-white/70 shadow-xl">
+                                        <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
+                                                    <User className="h-6 w-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-2xl">Información de Contacto</CardTitle>
+                                                    <p className="text-sm text-gray-600 mt-1">Datos para comunicarnos contigo</p>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6 pt-6">
                                             <div className="space-y-2">
-                                                <Label htmlFor="clienteTelefono" className="text-base flex items-center space-x-2">
-                                                    <Phone className="h-4 w-4 text-primary" />
-                                                    <span>Teléfono *</span>
+                                                <Label htmlFor="clienteNombre" className="text-base flex items-center space-x-2">
+                                                    <User className="h-4 w-4 text-primary" />
+                                                    <span>Nombre Completo *</span>
                                                 </Label>
                                                 <Input
-                                                    id="clienteTelefono"
-                                                    type="tel"
+                                                    id="clienteNombre"
                                                     required
-                                                    placeholder="300 123 4567"
+                                                    placeholder="Ej: Juan Pérez"
                                                     className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                    value={formData.clienteTelefono}
-                                                    onChange={(e) => setFormData({ ...formData, clienteTelefono: e.target.value })}
+                                                    value={formData.clienteNombre}
+                                                    onChange={(e) => setFormData({ ...formData, clienteNombre: e.target.value })}
                                                 />
                                             </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="clienteTelefono" className="text-base flex items-center space-x-2">
+                                                        <Phone className="h-4 w-4 text-primary" />
+                                                        <span>Teléfono *</span>
+                                                    </Label>
+                                                    <Input
+                                                        id="clienteTelefono"
+                                                        type="tel"
+                                                        required
+                                                        placeholder="300 123 4567"
+                                                        className="h-12 text-lg bg-white/80 backdrop-blur-sm"
+                                                        value={formData.clienteTelefono}
+                                                        onChange={(e) => setFormData({ ...formData, clienteTelefono: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="clienteEmail" className="text-base flex items-center space-x-2">
+                                                        <Mail className="h-4 w-4 text-primary" />
+                                                        <span>Email *</span>
+                                                    </Label>
+                                                    <Input
+                                                        id="clienteEmail"
+                                                        type="email"
+                                                        required
+                                                        placeholder="ejemplo@email.com"
+                                                        className="h-12 text-lg bg-white/80 backdrop-blur-sm"
+                                                        value={formData.clienteEmail}
+                                                        onChange={(e) => setFormData({ ...formData, clienteEmail: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardContent className="border-t pt-4 flex justify-between">
+                                            <Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>Atrás</Button>
+                                            <Button type="button" onClick={() => setCurrentStep(3)}>Continuar</Button>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Paso 3: Ubicación */}
+                                <div className={currentStep === 3 ? 'block' : 'hidden'}>
+                                    <Card className="border-2 border-primary/20 backdrop-blur-xl bg-white/70 shadow-xl">
+                                        <CardHeader className="bg-gradient-to-r from-secondary/10 to-transparent">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-secondary to-primary rounded-xl flex items-center justify-center shadow-lg">
+                                                    <MapPin className="h-6 w-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-2xl">Ubicación del Servicio</CardTitle>
+                                                    <p className="text-sm text-gray-600 mt-1">¿Dónde realizaremos el servicio?</p>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6 pt-6">
+                                            {/* Selector de Direcciones Guardadas */}
+                                            {savedAddresses.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-base">Usar una dirección guardada</Label>
+                                                    <select
+                                                        className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        value={selectedAddressId}
+                                                        onChange={(e) => handleAddressChange(e.target.value)}
+                                                    >
+                                                        <option value="new">+ Nueva Dirección</option>
+                                                        {savedAddresses.map((addr) => (
+                                                            <option key={addr.$id} value={addr.$id}>
+                                                                {addr.nombre} - {addr.direccion}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
                                             <div className="space-y-2">
-                                                <Label htmlFor="clienteEmail" className="text-base flex items-center space-x-2">
-                                                    <Mail className="h-4 w-4 text-primary" />
-                                                    <span>Email *</span>
+                                                <Label htmlFor="direccion" className="text-base flex items-center space-x-2">
+                                                    <MapPin className="h-4 w-4 text-secondary" />
+                                                    <span>Dirección Exacta *</span>
                                                 </Label>
                                                 <Input
-                                                    id="clienteEmail"
-                                                    type="email"
+                                                    id="direccion"
                                                     required
-                                                    placeholder="ejemplo@email.com"
+                                                    placeholder="Calle 123 # 45 - 67"
                                                     className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                    value={formData.clienteEmail}
-                                                    onChange={(e) => setFormData({ ...formData, clienteEmail: e.target.value })}
+                                                    value={formData.direccion}
+                                                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                                                    disabled={selectedAddressId !== "new"}
+                                                />
+                                                {selectedAddressId !== "new" && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Para editar, selecciona "Nueva Dirección" o ve a tu perfil.
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="ciudad" className="text-base flex items-center space-x-2">
+                                                        <Home className="h-4 w-4 text-secondary" />
+                                                        <span>Ciudad *</span>
+                                                    </Label>
+                                                    <select
+                                                        id="ciudad"
+                                                        className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        value={formData.ciudad}
+                                                        onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+                                                        disabled={selectedAddressId !== "new"}
+                                                    >
+                                                        <option value="Bogotá">Bogotá</option>
+                                                        <option value="Medellín">Medellín</option>
+                                                        <option value="Cali">Cali</option>
+                                                        <option value="Barranquilla">Barranquilla</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="tipoPropiedad" className="text-base flex items-center space-x-2">
+                                                        <Home className="h-4 w-4 text-secondary" />
+                                                        <span>Tipo de Propiedad *</span>
+                                                    </Label>
+                                                    <select
+                                                        id="tipoPropiedad"
+                                                        className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        value={formData.tipoPropiedad}
+                                                        onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value as TipoPropiedad })}
+                                                        disabled={selectedAddressId !== "new"}
+                                                    >
+                                                        <option value={TipoPropiedad.CASA}>Casa</option>
+                                                        <option value={TipoPropiedad.APARTAMENTO}>Apartamento</option>
+                                                        <option value={TipoPropiedad.OFICINA}>Oficina</option>
+                                                        <option value={TipoPropiedad.LOCAL}>Local Comercial</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="metrosCuadrados" className="text-sm">M² (aprox)</Label>
+                                                    <Input
+                                                        id="metrosCuadrados"
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="80"
+                                                        className="h-11 bg-white/80 backdrop-blur-sm"
+                                                        value={formData.metrosCuadrados || ""}
+                                                        onChange={(e) => setFormData({ ...formData, metrosCuadrados: Number(e.target.value) })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="habitaciones" className="text-sm">Habitaciones</Label>
+                                                    <Input
+                                                        id="habitaciones"
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="3"
+                                                        className="h-11 bg-white/80 backdrop-blur-sm"
+                                                        value={formData.habitaciones || ""}
+                                                        onChange={(e) => setFormData({ ...formData, habitaciones: Number(e.target.value) })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="banos" className="text-sm">Baños</Label>
+                                                    <Input
+                                                        id="banos"
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="2"
+                                                        className="h-11 bg-white/80 backdrop-blur-sm"
+                                                        value={formData.banos || ""}
+                                                        onChange={(e) => setFormData({ ...formData, banos: Number(e.target.value) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardContent className="border-t pt-4 flex justify-between">
+                                            <Button type="button" variant="outline" onClick={() => setCurrentStep(2)}>Atrás</Button>
+                                            <Button type="button" onClick={() => setCurrentStep(4)}>Continuar</Button>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Paso 4: Fecha y Hora */}
+                                <div className={currentStep === 4 ? 'block' : 'hidden'}>
+                                    <Card className="border-2 border-primary/20 backdrop-blur-xl bg-white/70 shadow-xl">
+                                        <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
+                                                    <Calendar className="h-6 w-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-2xl">Fecha y Hora Preferida</CardTitle>
+                                                    <p className="text-sm text-gray-600 mt-1">¿Cuándo te gustaría el servicio?</p>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6 pt-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="fechaCita" className="text-base flex items-center space-x-2">
+                                                        <Calendar className="h-4 w-4 text-primary" />
+                                                        <span>Fecha *</span>
+                                                    </Label>
+                                                    <Input
+                                                        id="fechaCita"
+                                                        type="date"
+                                                        required
+                                                        min={new Date().toISOString().split("T")[0]}
+                                                        className="h-12 text-lg bg-white/80 backdrop-blur-sm"
+                                                        value={formData.fechaCita}
+                                                        onChange={(e) => setFormData({ ...formData, fechaCita: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="horaCita" className="text-base flex items-center space-x-2">
+                                                        <Clock className="h-4 w-4 text-primary" />
+                                                        <span>Hora *</span>
+                                                    </Label>
+                                                    <Input
+                                                        id="horaCita"
+                                                        type="time"
+                                                        required
+                                                        className="h-12 text-lg bg-white/80 backdrop-blur-sm"
+                                                        value={formData.horaCita}
+                                                        onChange={(e) => setFormData({ ...formData, horaCita: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="detallesAdicionales" className="text-base flex items-center space-x-2">
+                                                    <FileText className="h-4 w-4 text-primary" />
+                                                    <span>Detalles Adicionales (Opcional)</span>
+                                                </Label>
+                                                <textarea
+                                                    id="detallesAdicionales"
+                                                    rows={4}
+                                                    value={formData.detallesAdicionales}
+                                                    onChange={(e) => setFormData({ ...formData, detallesAdicionales: e.target.value })}
+                                                    className="flex w-full rounded-md border-2 border-input bg-white/80 backdrop-blur-sm px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    placeholder="Instrucciones especiales, código de acceso, mascota en casa, etc."
                                                 />
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
 
-                                {/* Paso 2: Ubicación */}
-                                <Card className={`border-2 transition-all backdrop-blur-xl bg-white/70 shadow-xl ${currentStep === 2 ? 'border-primary scale-[1.02]' : 'border-white/50'}`}>
-                                    <CardHeader className="bg-gradient-to-r from-secondary/10 to-transparent">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-12 h-12 bg-gradient-to-br from-secondary to-primary rounded-xl flex items-center justify-center shadow-lg">
-                                                <MapPin className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div>
-                                                <CardTitle className="text-2xl">Ubicación del Servicio</CardTitle>
-                                                <p className="text-sm text-gray-600 mt-1">¿Dónde realizaremos el servicio?</p>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6 pt-6">
-                                        {/* Selector de Direcciones Guardadas */}
-                                        {savedAddresses.length > 0 && (
-                                            <div className="space-y-2">
-                                                <Label className="text-base">Usar una dirección guardada</Label>
-                                                <select
-                                                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    value={selectedAddressId}
-                                                    onChange={(e) => handleAddressChange(e.target.value)}
-                                                >
-                                                    <option value="new">+ Nueva Dirección</option>
-                                                    {savedAddresses.map((addr) => (
-                                                        <option key={addr.$id} value={addr.$id}>
-                                                            {addr.nombre} - {addr.direccion}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                    {/* Resumen de Precio */}
+                                    <div className="mt-6">
+                                        <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/70 to-primary/10 shadow-xl">
+                                            <CardContent className="pt-6">
+                                                <div className="flex items-center justify-between flex-wrap gap-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
+                                                            <Sparkles className="h-6 w-6 text-white" />
+                                                        </div>
+                                                        <div>
+                                                            <div>
+                                                                <p className="text-sm text-gray-600">Precio Estimado</p>
+                                                                <p className="text-3xl font-bold text-gray-900">
+                                                                    ${precioEstimado.toLocaleString('es-CO')}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                    {selectedService ? selectedService.nombre : 'Servicio Básico'} • {formData.tipoPropiedad}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-4 py-2 text-sm">
+                                                        Precio final sujeto a confirmación
+                                                    </Badge>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    {/* Botones de Navegación Final */}
+                                    <div className="mt-8 flex flex-col gap-3">
+                                        {error && (
+                                            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start space-x-3 backdrop-blur-xl mb-4">
+                                                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <span className="text-red-600 text-xl">!</span>
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-red-900">Error al agendar</p>
+                                                    <p className="text-sm text-red-700">{error}</p>
+                                                </div>
                                             </div>
                                         )}
 
-                                        <div className="space-y-2">
-                                            <Label htmlFor="direccion" className="text-base flex items-center space-x-2">
-                                                <MapPin className="h-4 w-4 text-secondary" />
-                                                <span>Dirección Exacta *</span>
-                                            </Label>
-                                            <Input
-                                                id="direccion"
-                                                required
-                                                placeholder="Calle 123 # 45 - 67"
-                                                className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                value={formData.direccion}
-                                                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                                                disabled={selectedAddressId !== "new"} // Readonly if existing selected
-                                            />
-                                            {selectedAddressId !== "new" && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    Para editar, selecciona "Nueva Dirección" o ve a tu perfil.
-                                                </p>
+                                        <Button
+                                            type="submit"
+                                            size="lg"
+                                            className="w-full h-14 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all"
+                                            disabled={loading}
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
+                                                    Procesando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                                                    Confirmar Agendamiento
+                                                </>
                                             )}
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="ciudad" className="text-base flex items-center space-x-2">
-                                                    <Home className="h-4 w-4 text-secondary" />
-                                                    <span>Ciudad *</span>
-                                                </Label>
-                                                <select
-                                                    id="ciudad"
-                                                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    value={formData.ciudad}
-                                                    onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                                                    disabled={selectedAddressId !== "new"}
-                                                >
-                                                    <option value="Bogotá">Bogotá</option>
-                                                    <option value="Medellín">Medellín</option>
-                                                    <option value="Cali">Cali</option>
-                                                    <option value="Barranquilla">Barranquilla</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="tipoPropiedad" className="text-base flex items-center space-x-2">
-                                                    <Home className="h-4 w-4 text-secondary" />
-                                                    <span>Tipo de Propiedad *</span>
-                                                </Label>
-                                                <select
-                                                    id="tipoPropiedad"
-                                                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    value={formData.tipoPropiedad}
-                                                    onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value as TipoPropiedad })}
-                                                    disabled={selectedAddressId !== "new"}
-                                                >
-                                                    <option value={TipoPropiedad.CASA}>Casa</option>
-                                                    <option value={TipoPropiedad.APARTAMENTO}>Apartamento</option>
-                                                    <option value={TipoPropiedad.OFICINA}>Oficina</option>
-                                                    <option value={TipoPropiedad.LOCAL}>Local Comercial</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="metrosCuadrados" className="text-sm">M² (aprox)</Label>
-                                                <Input
-                                                    id="metrosCuadrados"
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="80"
-                                                    className="h-11 bg-white/80 backdrop-blur-sm"
-                                                    value={formData.metrosCuadrados || ""}
-                                                    onChange={(e) => setFormData({ ...formData, metrosCuadrados: Number(e.target.value) })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="habitaciones" className="text-sm">Habitaciones</Label>
-                                                <Input
-                                                    id="habitaciones"
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="3"
-                                                    className="h-11 bg-white/80 backdrop-blur-sm"
-                                                    value={formData.habitaciones || ""}
-                                                    onChange={(e) => setFormData({ ...formData, habitaciones: Number(e.target.value) })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="banos" className="text-sm">Baños</Label>
-                                                <Input
-                                                    id="banos"
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="2"
-                                                    className="h-11 bg-white/80 backdrop-blur-sm"
-                                                    value={formData.banos || ""}
-                                                    onChange={(e) => setFormData({ ...formData, banos: Number(e.target.value) })}
-                                                />
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Paso 3: Fecha y Hora */}
-                                <Card className={`border-2 transition-all backdrop-blur-xl bg-white/70 shadow-xl ${currentStep === 3 ? 'border-primary scale-[1.02]' : 'border-white/50'}`}>
-                                    <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-                                                <Calendar className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div>
-                                                <CardTitle className="text-2xl">Fecha y Hora Preferida</CardTitle>
-                                                <p className="text-sm text-gray-600 mt-1">¿Cuándo te gustaría el servicio?</p>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6 pt-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="fechaCita" className="text-base flex items-center space-x-2">
-                                                    <Calendar className="h-4 w-4 text-primary" />
-                                                    <span>Fecha *</span>
-                                                </Label>
-                                                <Input
-                                                    id="fechaCita"
-                                                    type="date"
-                                                    required
-                                                    min={new Date().toISOString().split("T")[0]}
-                                                    className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                    value={formData.fechaCita}
-                                                    onChange={(e) => setFormData({ ...formData, fechaCita: e.target.value })}
-                                                    onClick={() => setCurrentStep(3)}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="horaCita" className="text-base flex items-center space-x-2">
-                                                    <Clock className="h-4 w-4 text-primary" />
-                                                    <span>Hora *</span>
-                                                </Label>
-                                                <Input
-                                                    id="horaCita"
-                                                    type="time"
-                                                    required
-                                                    className="h-12 text-lg bg-white/80 backdrop-blur-sm"
-                                                    value={formData.horaCita}
-                                                    onChange={(e) => setFormData({ ...formData, horaCita: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="detallesAdicionales" className="text-base flex items-center space-x-2">
-                                                <FileText className="h-4 w-4 text-primary" />
-                                                <span>Detalles Adicionales (Opcional)</span>
-                                            </Label>
-                                            <textarea
-                                                id="detallesAdicionales"
-                                                rows={4}
-                                                value={formData.detallesAdicionales}
-                                                onChange={(e) => setFormData({ ...formData, detallesAdicionales: e.target.value })}
-                                                className="flex w-full rounded-md border-2 border-input bg-white/80 backdrop-blur-sm px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                                placeholder="Instrucciones especiales, código de acceso, mascota en casa, etc."
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Resumen de Precio */}
-                                <Card className="border-2 border-secondary/50 backdrop-blur-xl bg-gradient-to-r from-secondary/10 via-white/70 to-primary/10 shadow-xl">
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
-                                                    <Sparkles className="h-6 w-6 text-white" />
-                                                </div>
-                                                <div>
-                                                    <div>
-                                                        <p className="text-sm text-gray-600">Precio Estimado</p>
-                                                        <p className="text-3xl font-bold text-gray-900">
-                                                            ${precioEstimado.toLocaleString('es-CO')}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            Basado en {formData.tipoPropiedad}
-                                                            {formData.metrosCuadrados > 0 && ` • ${formData.metrosCuadrados}m²`}
-                                                        </p>
-                                                    </div>                        </div>
-                                            </div>
-                                            <Badge className="bg-secondary/20 text-secondary border-secondary/30 px-4 py-2 text-sm">
-                                                Precio final confirmado al aceptar servicio
-                                            </Badge>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Error */}
-                                {error && (
-                                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start space-x-3 backdrop-blur-xl">
-                                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <span className="text-red-600 text-xl">!</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-red-900">Error al agendar</p>
-                                            <p className="text-sm text-red-700">{error}</p>
-                                        </div>
+                                        </Button>
+                                        <Button type="button" variant="outline" onClick={() => setCurrentStep(3)} className="w-full">Atrás</Button>
                                     </div>
-                                )}
+                                </div>
 
-                                {/* Botón de envío */}
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    className="w-full h-14 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all"
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
-                                            Procesando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="mr-2 h-5 w-5" />
-                                            Confirmar Agendamiento
-                                        </>
-                                    )}
-                                </Button>
-
-                                <p className="text-center text-sm text-gray-500">
+                                <p className="text-center text-sm text-gray-500 pt-4">
                                     Al agendar, aceptas que nos comuniquemos contigo para confirmar los detalles del servicio
                                 </p>
                             </div>

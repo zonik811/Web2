@@ -83,7 +83,7 @@ export async function registrarGasto(data: RegistrarGastoInput): Promise<{ succe
             gastoData
         );
 
-        console.log(`✅ Gasto registrado: $${data.monto} - ${data.concepto}`);
+
         return { success: true, data: newGasto as unknown as Gasto };
     } catch (error: any) {
         console.error("❌ Error registrando gasto:", error);
@@ -103,7 +103,7 @@ export async function actualizarGasto(gastoId: string, data: Partial<RegistrarGa
             data
         );
 
-        console.log(`✅ Gasto actualizado: ${gastoId}`);
+
         return { success: true, data: updatedGasto as unknown as Gasto };
     } catch (error: any) {
         console.error("❌ Error actualizando gasto:", error);
@@ -121,7 +121,7 @@ export async function eliminarGasto(gastoId: string): Promise<{ success: boolean
             COLLECTIONS.GASTOS,
             gastoId
         );
-        console.log(`✅ Gasto eliminado: ${gastoId}`);
+
         return { success: true };
     } catch (error: any) {
         console.error("❌ Error eliminando gasto:", error);

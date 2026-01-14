@@ -41,9 +41,14 @@ import Link from "next/link";
 import { obtenerEmpleado, obtenerEstadisticasEmpleado, actualizarEmpleado } from "@/lib/actions/empleados";
 import { obtenerCitas, actualizarCita } from "@/lib/actions/citas";
 import { obtenerPagosEmpleado, registrarPago, type Pago } from "@/lib/actions/pagos";
+import { obtenerCargos } from "@/lib/actions/parametricas";
+import { obtenerCategorias, type Categoria } from "@/lib/actions/categorias";
+import { obtenerComisionesEmpleado, crearComision, eliminarComision } from "@/lib/actions/comisiones";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import { nombreCompleto, formatearPrecio, formatearFecha } from "@/lib/utils";
-import { type Empleado, type EstadisticasEmpleado, type Cita, type ModalidadPago, EstadoCita, CargoEmpleado } from "@/types";
+import { type Empleado, type EstadisticasEmpleado, type Cita, type ModalidadPago, EstadoCita, CargoEmpleado, type Comision } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function PerfilEmpleadoPage() {
     const params = useParams();
@@ -55,7 +60,12 @@ export default function PerfilEmpleadoPage() {
     const [stats, setStats] = useState<EstadisticasEmpleado | null>(null);
     const [servicios, setServicios] = useState<Cita[]>([]);
     const [pagos, setPagos] = useState<Pago[]>([]);
+    const [comisiones, setComisiones] = useState<Comision[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Datos Paramétricos
+    const [cargosDisponibles, setCargosDisponibles] = useState<any[]>([]);
+    const [categoriasDisponibles, setCategoriasDisponibles] = useState<Categoria[]>([]);
 
     // Estados de Edición de Perfil
     const [showEditProfile, setShowEditProfile] = useState(false);
@@ -65,11 +75,16 @@ export default function PerfilEmpleadoPage() {
         telefono: "",
         email: "",
         direccion: "",
-        cargo: "" as CargoEmpleado | string,
-        documento: ""
+        cargo: "" as string,
+        documento: "",
+        fechaNacimiento: "",
+        fechaContratacion: "",
+        especialidades: [] as string[],
+        tarifaPorHora: 0,
+        modalidadPago: "hora" as string
     });
 
-    // Estados de Edición de Pago/Horas
+    // Estados de Edición de Pago/Horas (Mantener compatibilidad visual con tarjeta existente)
     const [editingHoras, setEditingHoras] = useState<{ [key: string]: number }>({});
     const [editingPago, setEditingPago] = useState(false);
     const [tarifaPorHora, setTarifaPorHora] = useState(0);
@@ -81,14 +96,37 @@ export default function PerfilEmpleadoPage() {
         monto: 0,
         concepto: 'pago_mensual',
         metodoPago: 'transferencia',
-        periodo: new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+        periodo: new Date().toISOString().slice(0, 7), // YYYY-MM
         fechaPago: new Date().toISOString().split('T')[0],
         notas: ''
     });
 
+    // Estado de Registro de Comisión
+    const [showComisionDialog, setShowComisionDialog] = useState(false);
+    const [nuevaComision, setNuevaComision] = useState({
+        monto: 0,
+        concepto: '',
+        fecha: new Date().toISOString().split('T')[0],
+        referenciaId: '',
+        observaciones: ''
+    });
+
     useEffect(() => {
-        cargarEmpleado();
+        const init = async () => {
+            await Promise.all([cargarEmpleado(), cargarParametricas()]);
+        };
+        init();
     }, [empleadoId]);
+
+    const cargarParametricas = async () => {
+        try {
+            const [cargos, categorias] = await Promise.all([obtenerCargos(), obtenerCategorias()]);
+            setCargosDisponibles(cargos);
+            setCategoriasDisponibles(categorias);
+        } catch (e) {
+            console.error("Error cargando paramétricas:", e);
+        }
+    };
 
     const cargarEmpleado = async () => {
         try {
@@ -102,7 +140,12 @@ export default function PerfilEmpleadoPage() {
                 email: data.email,
                 direccion: data.direccion,
                 cargo: data.cargo,
-                documento: data.documento
+                documento: data.documento,
+                fechaNacimiento: data.fechaNacimiento ? data.fechaNacimiento.split('T')[0] : '',
+                fechaContratacion: data.fechaContratacion ? data.fechaContratacion.split('T')[0] : '',
+                especialidades: data.especialidades || [],
+                tarifaPorHora: data.tarifaPorHora || 0,
+                modalidadPago: data.modalidadPago || 'hora'
             });
             setTarifaPorHora(data.tarifaPorHora);
             setModalidadPago(data.modalidadPago);
@@ -110,25 +153,22 @@ export default function PerfilEmpleadoPage() {
             const estadisticas = await obtenerEstadisticasEmpleado(empleadoId);
             setStats(estadisticas);
 
-            // Servicios
-            const todasCitas = await obtenerCitas();
-            const serviciosCompletados = todasCitas.filter(
-                (cita: Cita) =>
-                    cita.estado === EstadoCita.COMPLETADA &&
-                    cita.empleadosAsignados?.includes(empleadoId)
-            );
-            setServicios(serviciosCompletados);
+            const [servs, pag, coms] = await Promise.all([
+                obtenerCitas({ empleadoId: empleadoId, estado: 'completada' } as any),
+                obtenerPagosEmpleado(empleadoId),
+                obtenerComisionesEmpleado(empleadoId)
+            ]);
+            setServicios(servs as Cita[]);
+            setPagos(pag);
+            setComisiones(coms);
 
             // Inicializar horas editables
             const horasIniciales: { [key: string]: number } = {};
-            serviciosCompletados.forEach((cita: Cita) => {
+            (servs as Cita[]).forEach((cita: Cita) => {
                 horasIniciales[cita.$id] = cita.horasTrabajadas || 8;
             });
             setEditingHoras(horasIniciales);
 
-            // Pagos
-            const historialPagos = await obtenerPagosEmpleado(empleadoId);
-            setPagos(historialPagos);
         } catch (error) {
             console.error("Error cargando empleado:", error);
         } finally {
@@ -136,14 +176,58 @@ export default function PerfilEmpleadoPage() {
         }
     };
 
+    const toggleEspecialidad = (nombre: string) => {
+        const current = editData.especialidades;
+        const updated = current.includes(nombre)
+            ? current.filter(e => e !== nombre)
+            : [...current, nombre];
+        setEditData({ ...editData, especialidades: updated });
+    };
+
+    const handleRegistrarComision = async () => {
+        if (!empleado) return;
+        try {
+            const resp = await crearComision({
+                empleadoId: empleadoId,
+                ...nuevaComision
+            });
+            if (resp.success) {
+                setShowComisionDialog(false);
+                setNuevaComision({
+                    monto: 0,
+                    concepto: '',
+                    fecha: new Date().toISOString().split('T')[0],
+                    referenciaId: '',
+                    observaciones: ''
+                });
+                cargarEmpleado();
+            }
+        } catch (error) {
+            console.error("Error creando comisión:", error);
+        }
+    };
+
+    const handleEliminarComision = async (id: string) => {
+        if (!confirm("¿Estás seguro de eliminar esta comisión?")) return;
+        try {
+            await eliminarComision(id);
+            cargarEmpleado();
+        } catch (error) {
+            console.error("Error eliminando comisión:", error);
+        }
+    };
+
     const handleUpdateProfile = async () => {
         if (!empleado) return;
         try {
-            await actualizarEmpleado(empleadoId, {
+            const payload = {
                 ...editData,
-                cargo: editData.cargo as CargoEmpleado,
+                cargo: editData.cargo,
+                modalidadPago: editData.modalidadPago as ModalidadPago,
                 activo: empleado.activo
-            });
+            };
+
+            await actualizarEmpleado(empleadoId, payload);
             setShowEditProfile(false);
             cargarEmpleado();
         } catch (error) {
@@ -173,12 +257,12 @@ export default function PerfilEmpleadoPage() {
             console.error("Error actualizando configuración pago:", error);
         }
     };
-
     const handleRegistrarPago = async () => {
         try {
             const result = await registrarPago({
                 empleadoId,
-                ...nuevoPago
+                ...nuevoPago,
+                periodo: nuevoPago.fechaPago.slice(0, 7) // Asegurar siempre YYYY-MM basado en la fecha de pago
             });
             if (result.success) {
                 setShowPagoDialog(false);
@@ -186,7 +270,7 @@ export default function PerfilEmpleadoPage() {
                     monto: 0,
                     concepto: 'pago_mensual',
                     metodoPago: 'transferencia',
-                    periodo: new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+                    periodo: new Date().toISOString().slice(0, 7),
                     fechaPago: new Date().toISOString().split('T')[0],
                     notas: ''
                 });
@@ -349,7 +433,7 @@ export default function PerfilEmpleadoPage() {
                                         </div>
                                     </div>
                                     <p className="text-xs text-emerald-100 mt-4 bg-emerald-700/30 inline-block px-2 py-1 rounded">
-                                        {empleado.serviciosRealizados} servicios completados
+                                        {empleado.totalServicios} servicios completados
                                     </p>
                                 </CardContent>
                             </Card>
@@ -559,57 +643,208 @@ export default function PerfilEmpleadoPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Commissions History */}
+                    <Card className="border-none shadow-md overflow-hidden bg-white">
+                        <CardHeader className="pb-0 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between pr-6">
+                            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2 py-2">
+                                <Wallet className="h-5 w-5 text-purple-500" />
+                                Comisiones y Bonos
+                            </CardTitle>
+                            <Button size="sm" variant="outline" onClick={() => setShowComisionDialog(true)} className="h-8 border-purple-200 text-purple-700 hover:bg-purple-50">
+                                <Plus className="h-3.5 w-3.5 mr-1" /> Registrar Comisión
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="max-h-[300px] overflow-y-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50 sticky top-0 z-10">
+                                        <TableRow>
+                                            <TableHead className="pl-6 font-semibold">Fecha</TableHead>
+                                            <TableHead className="font-semibold">Concepto</TableHead>
+                                            <TableHead className="text-right pr-6 font-semibold">Monto</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {comisiones.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                                    No hay comisiones registradas
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            comisiones.map((com) => (
+                                                <TableRow key={com.$id} className="hover:bg-gray-50/50">
+                                                    <TableCell className="pl-6 text-gray-600">
+                                                        {formatearFecha(com.fecha)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="font-medium text-gray-700">{com.concepto}</span>
+                                                        {com.observaciones && <p className="text-xs text-gray-400 mt-0.5 max-w-[200px] truncate">{com.observaciones}</p>}
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold text-purple-600">
+                                                        {formatearPrecio(com.monto)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-gray-400 hover:text-red-600"
+                                                            onClick={() => handleEliminarComision(com.$id)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
-            {/* Dialog Editar Perfil */}
+            {/* Dialog Editar Perfil Premium */}
             <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Editar Perfil de Empleado</DialogTitle>
                         <DialogDescription>Actualiza la información personal y laboral del empleado.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Nombre</Label>
-                            <Input value={editData.nombre} onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Apellido</Label>
-                            <Input value={editData.apellido} onChange={(e) => setEditData({ ...editData, apellido: e.target.value })} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Documento</Label>
-                            <Input value={editData.documento} onChange={(e) => setEditData({ ...editData, documento: e.target.value })} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Cargo</Label>
-                            <div className="relative">
-                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
-                                    value={editData.cargo}
-                                    onChange={(e) => setEditData({ ...editData, cargo: e.target.value as CargoEmpleado })}
-                                >
-                                    <option value="limpiador">Limpiador</option>
-                                    <option value="supervisor">Supervisor</option>
-                                    <option value="especialista">Especialista</option>
-                                </select>
+
+                    {/* Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 py-4">
+
+                        {/* Column 1: Personal Info */}
+                        <div className="space-y-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2">
+                                <User className="h-5 w-5 text-blue-600" /> Información Personal
+                            </h3>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Nombre</Label>
+                                    <Input value={editData.nombre} onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Apellido</Label>
+                                    <Input value={editData.apellido} onChange={(e) => setEditData({ ...editData, apellido: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Documento de Identidad</Label>
+                                <Input value={editData.documento} onChange={(e) => setEditData({ ...editData, documento: e.target.value })} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Teléfono</Label>
+                                    <Input value={editData.telefono} onChange={(e) => setEditData({ ...editData, telefono: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Email</Label>
+                                    <Input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Dirección</Label>
+                                <Input value={editData.direccion} onChange={(e) => setEditData({ ...editData, direccion: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Fecha de Nacimiento</Label>
+                                <Input type="date" value={editData.fechaNacimiento} onChange={(e) => setEditData({ ...editData, fechaNacimiento: e.target.value })} />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Teléfono</Label>
-                            <Input value={editData.telefono} onChange={(e) => setEditData({ ...editData, telefono: e.target.value })} />
+
+                        {/* Column 2: Laboral Info */}
+                        <div className="space-y-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2">
+                                <Briefcase className="h-5 w-5 text-emerald-600" /> Información Laboral
+                            </h3>
+
+                            <div className="space-y-2">
+                                <Label>Cargo</Label>
+                                <Select value={editData.cargo as string} onValueChange={(val) => setEditData({ ...editData, cargo: val })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar cargo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {cargosDisponibles.map((c) => (
+                                            <SelectItem key={c.$id} value={c.nombre}>
+                                                {c.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Fecha Contratación</Label>
+                                    <Input type="date" value={editData.fechaContratacion} onChange={(e) => setEditData({ ...editData, fechaContratacion: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Tarifa Base</Label>
+                                    <div className="relative">
+                                        <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                        <Input type="number" className="pl-9" value={editData.tarifaPorHora} onChange={(e) => setEditData({ ...editData, tarifaPorHora: parseFloat(e.target.value) || 0 })} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Modalidad de Pago</Label>
+                                <Select value={editData.modalidadPago} onValueChange={(val) => setEditData({ ...editData, modalidadPago: val })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar modalidad" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="hora">Por Hora</SelectItem>
+                                        <SelectItem value="servicio">Por Servicio</SelectItem>
+                                        <SelectItem value="fijo_mensual">Fijo Mensual</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="font-semibold flex items-center gap-2">
+                                    Especialidades (Categorías de Servicios)
+                                    <Badge variant="secondary" className="text-xs">Multi-selección</Badge>
+                                </Label>
+                                <p className="text-xs text-gray-500">
+                                    Selecciona las categorías de servicios en las que este empleado es especialista
+                                </p>
+                                <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-1">
+                                    {categoriasDisponibles.map((cat) => (
+                                        <div
+                                            key={cat.$id}
+                                            className={`flex items-start space-x-2 p-2 rounded border cursor-pointer transition-colors ${editData.especialidades.includes(cat.nombre)
+                                                ? "bg-primary/5 border-primary"
+                                                : "hover:bg-gray-50 border-gray-200"
+                                                }`}
+                                            onClick={() => toggleEspecialidad(cat.nombre)}
+                                        >
+                                            <Checkbox
+                                                checked={editData.especialidades.includes(cat.nombre)}
+                                                onCheckedChange={() => toggleEspecialidad(cat.nombre)}
+                                            />
+                                            <div className="text-sm leading-none">
+                                                <p className="font-medium text-gray-700">{cat.nombre}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
-                        </div>
-                        <div className="col-span-2 space-y-2">
-                            <Label>Dirección</Label>
-                            <Input value={editData.direccion} onChange={(e) => setEditData({ ...editData, direccion: e.target.value })} />
-                        </div>
+
                     </div>
+
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowEditProfile(false)}>Cancelar</Button>
                         <Button onClick={handleUpdateProfile} className="bg-blue-600 hover:bg-blue-700">Guardar Cambios</Button>
@@ -672,6 +907,68 @@ export default function PerfilEmpleadoPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowPagoDialog(false)}>Cancelar</Button>
                         <Button onClick={handleRegistrarPago} className="bg-emerald-600 hover:bg-emerald-700">Registrar Pago</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Registrar Comisión */}
+            <Dialog open={showComisionDialog} onOpenChange={setShowComisionDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Registrar Comisión</DialogTitle>
+                        <DialogDescription>Añadir bono o venta para {empleado.nombre} {empleado.apellido}</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                                <Label>Monto de Comisión</Label>
+                                <div className="relative">
+                                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        type="number"
+                                        className="pl-9"
+                                        value={nuevaComision.monto}
+                                        onChange={(e) => setNuevaComision({ ...nuevaComision, monto: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="col-span-2">
+                                <Label>Concepto / Motivo</Label>
+                                <Input
+                                    placeholder="Ej: Venta de producto X, Bono de puntualidad..."
+                                    value={nuevaComision.concepto}
+                                    onChange={(e) => setNuevaComision({ ...nuevaComision, concepto: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <Label>Fecha</Label>
+                                <Input
+                                    type="date"
+                                    value={nuevaComision.fecha}
+                                    onChange={(e) => setNuevaComision({ ...nuevaComision, fecha: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <Label>Referencia (Opcional)</Label>
+                                <Input
+                                    placeholder="ID Factura..."
+                                    value={nuevaComision.referenciaId}
+                                    onChange={(e) => setNuevaComision({ ...nuevaComision, referenciaId: e.target.value })}
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <Label>Observaciones</Label>
+                                <Input
+                                    placeholder="Detalles adicionales..."
+                                    value={nuevaComision.observaciones}
+                                    onChange={(e) => setNuevaComision({ ...nuevaComision, observaciones: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowComisionDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleRegistrarComision} className="bg-purple-600 hover:bg-purple-700">Registrar Comisión</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

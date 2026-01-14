@@ -68,7 +68,7 @@ export async function obtenerResumenFinanciero(year?: number): Promise<ReporteFi
         const [citasResponse, gastosResponse] = await Promise.all([
             databases.listDocuments(DATABASE_ID, COLLECTIONS.CITAS, [
                 Query.equal("estado", "completada"),
-                Query.equal("pagadoPorCliente", true),
+                // Removed strict pagadoPorCliente check to show Total Sales (Invoiced) instead of just Cash Collected
                 Query.greaterThanEqual("fechaCita", startDate),
                 Query.lessThanEqual("fechaCita", endDate),
                 Query.limit(5000)
@@ -89,14 +89,18 @@ export async function obtenerResumenFinanciero(year?: number): Promise<ReporteFi
         citas.forEach(cita => {
             const mesIndex = new Date(cita.fechaCita).getMonth();
             if (mesIndex >= 0 && mesIndex < 12) {
-                reporte[mesIndex].ingresos += cita.precioAcordado;
+                // Ensure number casting and fallback
+                const precio = Number(cita.precioAcordado) || Number(cita.precioCliente) || 0;
+                reporte[mesIndex].ingresos += precio;
             }
         });
 
         gastos.forEach(gasto => {
             const mesIndex = new Date(gasto.fecha).getMonth();
             if (mesIndex >= 0 && mesIndex < 12) {
-                reporte[mesIndex].gastos += gasto.monto;
+                // Ensure number casting
+                const monto = Number(gasto.monto) || 0;
+                reporte[mesIndex].gastos += monto;
             }
         });
 
@@ -165,7 +169,9 @@ export async function obtenerMejoresClientes(fechaInicio?: Date, fechaFin?: Date
             }
 
             const cliente = clientesMap.get(id)!;
-            cliente.totalGastado += cita.precioAcordado;
+            // Ensure number casting
+            const precio = Number(cita.precioAcordado) || Number(cita.precioCliente) || 0;
+            cliente.totalGastado += precio;
             cliente.serviciosContratados += 1;
         });
 
@@ -205,7 +211,7 @@ export async function obtenerCartera(fechaInicio?: Date, fechaFin?: Date): Promi
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             totalDias += diffDays;
 
-            return sum + cita.precioAcordado;
+            return sum + (Number(cita.precioAcordado) || Number(cita.precioCliente) || 0);
         }, 0);
 
         return {
@@ -245,7 +251,8 @@ export async function obtenerEstadoNomina(fechaInicio?: Date, fechaFin?: Date): 
         // Pagado = We'll assume for now 90% is paid to show some pending
 
         citas.forEach(cita => {
-            const payrollCost = cita.precioAcordado * 0.7;
+            const precio = Number(cita.precioAcordado) || Number(cita.precioCliente) || 0;
+            const payrollCost = precio * 0.7;
             totalGenerado += payrollCost;
 
             // Randomly some are unpaid for demo visualization
@@ -284,7 +291,8 @@ export async function obtenerRendimientoPersonal(fechaInicio?: Date, fechaFin?: 
         citas.forEach(cita => {
             if (cita.empleadosAsignados && cita.empleadosAsignados.length > 0) {
                 // Split revenue among assigned employees
-                const revenuePerEmp = cita.precioAcordado / cita.empleadosAsignados.length;
+                const precio = Number(cita.precioAcordado) || Number(cita.precioCliente) || 0;
+                const revenuePerEmp = precio / cita.empleadosAsignados.length;
 
                 cita.empleadosAsignados.forEach(empId => {
                     const current = statsMap.get(empId) || { count: 0, revenue: 0 };

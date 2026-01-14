@@ -19,6 +19,5 @@ export const storage = new Storage(client);
 export const account = new Account(client);
 export const users = new Users(client);
 
-// Re-exportar constantes necesarias
-export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
-export const STORAGE_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_STORAGE_BUCKET_ID!;
+// Re-exportar constantes necesarias desde appwrite.ts
+export { DATABASE_ID, STORAGE_BUCKET_ID, COLLECTIONS } from './appwrite';

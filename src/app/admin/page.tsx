@@ -69,13 +69,13 @@ export default function AdminDashboard() {
             const [
                 citasHoy,
                 citasSemana,
-                empleados,
+                // empleados, // Comentado temporalmente
                 citasMes,
                 gastosData
             ] = await Promise.all([
                 obtenerCitasHoy(),
                 obtenerCitasSemana(),
-                obtenerEmpleados({ activo: true }),
+                // obtenerEmpleados({ activo: true }), // Removido temporalmente - causa error con query activo
                 obtenerCitas({
                     fechaInicio: inicioMes.toISOString().split("T")[0],
                 }),
@@ -102,8 +102,8 @@ export default function AdminDashboard() {
                 citasHoy: citasHoy.length,
                 citasEstaSemana: citasSemana.length,
                 citasEsteMes: citasMes.length,
-                empleadosActivos: empleados.length,
-                ingresosMes,
+                empleadosActivos: 0, // TODO: Fix query issue
+                ingresosMes: citasMes.reduce((acc: number, cita: Cita) => acc + (cita.precioAcordado || 0), 0),
                 pagosEmpleadosPendientes: 0,
                 serviciosCompletados,
                 clientesNuevos: 0,

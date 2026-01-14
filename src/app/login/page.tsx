@@ -19,11 +19,15 @@ export default function LoginPage() {
 
     // Efecto para redireccionar cuando el rol se detecta
     useEffect(() => {
+
         if (!authLoading && role) {
+
             if (role === "admin") {
+
                 router.push("/admin");
             } else if (role === "client") {
-                router.push("/portal/dashboard");
+
+                router.push("/mi-cuenta");
             }
         }
     }, [role, router, authLoading]);
@@ -49,7 +53,24 @@ export default function LoginPage() {
 
         try {
             await login(email, password);
-            // La redirección es manejada por el useEffect
+
+            // Esperar un momento para que el estado se actualice
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Redirigir directamente basado en el rol actualizado
+            const currentRole = role; // Capturar el rol actual
+
+
+            if (currentRole === "admin") {
+
+                router.push("/admin");
+            } else if (currentRole === "client") {
+
+                router.push("/mi-cuenta");
+            } else {
+                // Si no hay rol aún, dejamos que el useEffect lo maneje
+
+            }
         } catch (err: any) {
             setError(err.message || "Error al iniciar sesión");
             setLoading(false);

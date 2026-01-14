@@ -16,15 +16,53 @@ export const STORAGE_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_STORAGE_BUCKET
 
 // Nombres de colecciones
 export const COLLECTIONS = {
-    SERVICIOS: "servicios",
-    CITAS: "citas",
-    EMPLEADOS: "empleados",
-    PAGOS_EMPLEADOS: "pagos_empleados",
-    PAGOS_CLIENTES: "pagos_clientes",
-    GASTOS: "gastos",
-    CLIENTES: "clientes",
-    DIRECCIONES: "direcciones",
-    HISTORIAL_PUNTOS: "historial_puntos"
+    EMPRESA_CONFIG: 'empresa_config',
+    CONFIG_HERO: 'config_hero',
+    CONFIG_BRANDING: 'config_branding',
+    COMPONENT_STYLES: 'component_styles',
+    CONFIG_SECTIONS: 'config_sections',
+    EMPRESA_INFO: 'empresa_info',
+    CLIENTES: 'clientes',
+    SERVICIOS: 'servicios',
+    EMPLEADOS: 'empleados',
+    CITAS: 'citas',
+    PRODUCTOS: 'productos',
+    ORDENES: 'ordenes',
+    GASTOS: 'gastos',
+    CATEGORIAS: 'categorias',
+    METODOS_PAGO: 'metodos_pago',
+    ESTADOS: 'estados',
+    PROVEEDORES: 'proveedores',
+    COMPRAS: 'compras',
+    MOVIMIENTOS_INVENTARIO: 'movimientos_inventario',
+    NOTIFICACIONES: 'notificaciones',
+    PAGOS_EMPLEADOS: 'pagos_empleados',
+    PAGOS_CLIENTES: 'pagos_clientes',
+    DIRECCIONES: 'direcciones',
+    HISTORIAL_PUNTOS: 'historial_puntos',
+    USER_PROFILE: 'user_profile',
+    CARGOS: 'cargos',
+    ESPECIALIDADES: 'especialidades',
+
+    // Órdenes de Trabajo
+    VEHICULOS: 'vehiculos',
+    ORDENES_TRABAJO: 'ordenes_trabajo',
+    OT_PROCESOS: 'ot_procesos',
+    OT_ACTIVIDADES: 'ot_actividades',
+    OT_REPUESTOS: 'ot_repuestos',
+    OT_PRUEBAS: 'ot_pruebas',
+    OT_CHECKLIST_VEHICULO: 'ot_checklist_vehiculo',
+    OT_AUTORIZACIONES: 'ot_autorizaciones',
+    OT_PLANTILLAS_PROCESOS: 'ot_plantillas_procesos',
+
+    // Comisiones
+    COMISIONES: 'comisiones',
+
+    // Facturas y Pagos
+    FACTURAS: 'facturas',
+
+    // Alias
+    MOVIMIENTOS: 'movimientos_inventario',
 };
 
 // Funciones helper para Storage

@@ -9,11 +9,12 @@ export enum EstadoCita {
     CANCELADA = "cancelada",
 }
 
-export enum CargoEmpleado {
-    LIMPIADOR = "limpiador",
-    SUPERVISOR = "supervisor",
-    ESPECIALISTA = "especialista",
-}
+// export enum CargoEmpleado {
+//     LIMPIADOR = "limpiador",
+//     SUPERVISOR = "supervisor",
+//     ESPECIALISTA = "especialista",
+// }
+export type CargoEmpleado = string;
 
 export enum ModalidadPago {
     HORA = "hora",
@@ -28,11 +29,12 @@ export enum TipoPropiedad {
     LOCAL = "local",
 }
 
-export enum CategoriaServicio {
-    RESIDENCIAL = "residencial",
-    COMERCIAL = "comercial",
-    ESPECIALIZADO = "especializado",
-}
+// export enum CategoriaServicio {
+//     RESIDENCIAL = "residencial",
+//     COMERCIAL = "comercial",
+//     ESPECIALIZADO = "especializado",
+// }
+export type CategoriaServicio = string;
 
 export enum MetodoPago {
     EFECTIVO = "efectivo",
@@ -56,10 +58,11 @@ export enum EstadoPago {
     PARCIAL = "parcial",
 }
 
-export enum TipoCliente {
-    RESIDENCIAL = "residencial",
-    COMERCIAL = "comercial",
-}
+// export enum TipoCliente {
+//     RESIDENCIAL = "residencial",
+//     COMERCIAL = "comercial",
+// }
+export type TipoCliente = string;
 
 export enum NivelFidelidad {
     BRONCE = "bronce",
@@ -92,6 +95,7 @@ export interface Servicio {
     descripcion: string;
     descripcionCorta: string;
     categoria: CategoriaServicio;
+    categorias?: string[]; // Array de strings (nombres de categorías)
     precioBase: number;
     unidadPrecio: "hora" | "metrocuadrado" | "servicio";
     duracionEstimada: number; // minutos
@@ -115,6 +119,7 @@ export interface Empleado {
     fechaNacimiento: string;
     fechaContratacion: string;
     cargo: CargoEmpleado;
+    role: 'ADMIN' | 'RECEPCIONISTA' | 'TECNICO'; // NUEVO: Rol en el sistema de OT
     especialidades: string[]; // ['limpieza_profunda', 'ventanas', 'oficinas']
     tarifaPorHora: number; // o porcentaje del servicio
     modalidadPago: ModalidadPago;
@@ -122,8 +127,7 @@ export interface Empleado {
     foto?: string; // Storage ID
     documentos?: string[]; // Contratos, certificados (Storage IDs)
     calificacionPromedio: number;
-    totalServicios: number;
-    serviciosRealizados?: number; // New field for completed services count
+    totalServicios: number; // Total servicios completados
     createdAt: string;
     updatedAt: string;
 }
@@ -132,6 +136,7 @@ export interface Cita {
     $id: string;
     servicioId: string;
     servicio?: Servicio; // Populated
+    categoriaSeleccionada?: string; // Categoría específica seleccionada al crear
     clienteId?: string;
     cliente?: Cliente; // Populated
     clienteNombre: string;
@@ -208,7 +213,6 @@ export interface Cliente {
     tipoCliente: TipoCliente;
     frecuenciaPreferida: FrecuenciaCliente;
     totalServicios: number;
-    serviciosCompletados?: number; // Total histórico real
     totalGastado: number;
     calificacionPromedio: number; // Cómo califican al servicio
     notasImportantes?: string; // Preferencias, alergias, instrucciones
@@ -221,6 +225,26 @@ export interface Cliente {
 }
 
 // Tipos para formularios y DTOs
+
+
+export interface CrearServicioInput {
+    nombre: string;
+    descripcion: string;
+    descripcionCorta: string;
+    categoria: CategoriaServicio;
+    categorias?: string[];
+    precioBase: number;
+    unidadPrecio: "hora" | "metrocuadrado" | "servicio";
+    duracionEstimada: number;
+    caracteristicas: string[];
+    requierePersonal: number;
+    activo?: boolean;
+    imagen?: File;
+}
+
+export interface ActualizarServicioInput extends Partial<CrearServicioInput> {
+    id: string;
+}
 
 export interface CrearEmpleadoInput {
     nombre: string;
@@ -243,7 +267,8 @@ export interface ActualizarEmpleadoInput extends Partial<CrearEmpleadoInput> {
 }
 
 export interface CrearCitaInput {
-    servicioId: string;
+    servicioId?: string;
+    categoriaSeleccionada?: string;
     clienteId?: string; // Si es cliente existente
     clienteNombre: string;
     clienteTelefono: string;
@@ -374,3 +399,37 @@ export type DeleteResponse = {
     success: boolean;
     error?: string;
 };
+
+// Comisiones
+export enum EstadoComision {
+    PENDIENTE = "pendiente",
+    PAGADO = "pagado",
+    ANULADO = "anulado"
+}
+
+export interface Comision {
+    $id: string;
+    empleadoId: string;
+    monto: number;
+    concepto: string;
+    fecha: string; // ISO Date
+    referenciaId?: string;
+    ordenTrabajoId?: string; // NUEVO: Vincular comisión a OT
+    procesoId?: string;      // NUEVO: Vincular a proceso específico
+    pagado: boolean;
+    estado: EstadoComision;
+    observaciones?: string;
+    createdAt: string;
+}
+
+export interface CrearComisionInput {
+    empleadoId: string;
+    monto: number;
+    concepto: string;
+    fecha: string;
+    referenciaId?: string;
+    observaciones?: string;
+}
+
+// Export all Work Order types
+export * from './ordenes-trabajo';

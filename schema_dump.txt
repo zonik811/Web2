@@ -1,0 +1,256 @@
+=== APPWRITE SCHEMA DUMP ===
+
+Collection: productos
+----------------------------------------
+Key: nombre
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: descripcion
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: categoria
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: precio
+Type: double
+Required: true
+Default: null
+Array: false
+...
+Key: precioDescuento
+Type: double
+Required: false
+Default: null
+Array: false
+...
+Key: stock
+Type: integer
+Required: true
+Default: null
+Array: false
+...
+Key: sku
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: codigo_barras
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: precio_compra
+Type: double
+Required: true
+Default: null
+Array: false
+...
+Key: precio_venta
+Type: double
+Required: true
+Default: null
+Array: false
+...
+Key: stock_minimo
+Type: integer
+Required: false
+Default: 5
+Array: false
+...
+Key: categoria_id
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: proveedor_id
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: visible_en_tienda
+Type: boolean
+Required: false
+Default: false
+Array: false
+...
+Key: tiene_descuento
+Type: boolean
+Required: false
+Default: false
+Array: false
+...
+Key: porcentaje_descuento
+Type: integer
+Required: false
+Default: 0
+Array: false
+...
+Key: precio_promocional
+Type: double
+Required: false
+Default: null
+Array: false
+...
+Key: imagenes
+Type: string
+Required: false
+Default: null
+Array: true
+...
+Key: createdAt
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: stock_actual
+Type: integer
+Required: false
+Default: 0
+Array: false
+...
+
+
+Collection: compras
+----------------------------------------
+Key: numeroCompra
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: proveedorId
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: items
+Type: string
+Required: true
+Default: null
+Array: true
+...
+Key: subtotal
+Type: double
+Required: true
+Default: null
+Array: false
+...
+Key: impuestos
+Type: double
+Required: false
+Default: null
+Array: false
+...
+Key: total
+Type: double
+Required: true
+Default: null
+Array: false
+...
+Key: estado
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: metodoPago
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: pagado
+Type: boolean
+Required: false
+Default: false
+Array: false
+...
+Key: fechaCompra
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: fechaRecepcion
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: comprobante
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: notas
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: creadoPor
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: proveedor_id
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: fecha_compra
+Type: datetime
+Required: true
+Default: null
+Array: false
+...
+Key: estado_pago
+Type: string
+Required: true
+Default: null
+Array: false
+...
+Key: factura_referencia
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: comprobante_url
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: detalles_items
+Type: string
+Required: false
+Default: null
+Array: false
+...
+Key: iva
+Type: double
+Required: false
+Default: 0
+Array: false
+...
+
+

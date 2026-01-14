@@ -208,7 +208,7 @@ export default function PersonalPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center font-semibold text-gray-700 text-base">
-                                            {empleado.serviciosRealizados || 0}
+                                            {empleado.totalServicios || 0}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex justify-center">

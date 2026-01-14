@@ -30,7 +30,7 @@ export async function obtenerClientes(): Promise<Cliente[]> {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.CLIENTES,
-            [Query.orderDesc("createdAt"), Query.limit(100)]
+            [Query.orderDesc("$createdAt"), Query.limit(100)]
         );
 
         return response.documents as unknown as Cliente[];
@@ -156,8 +156,6 @@ export async function crearCliente(
             totalGastado: 0,
             calificacionPromedio: 0,
             notasImportantes: data.notasImportantes,
-            activo: true,
-            createdAt: new Date().toISOString(),
         };
 
         const newCliente = await databases.createDocument(
@@ -234,7 +232,6 @@ export async function recalcularServiciosCliente(clienteId: string): Promise<{ s
             { serviciosCompletados: count }
         );
 
-        console.log(`✅ Cliente ${clienteId} actualizado: serviciosCompletados = ${count}`);
         return { success: true, count };
     } catch (error: any) {
         console.error(`❌ Error recalculando servicios de cliente ${clienteId}:`, error);
@@ -255,5 +252,108 @@ export async function eliminarCliente(id: string): Promise<{ success: boolean; e
     } catch (error: any) {
         console.error("Error eliminando cliente:", error);
         return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Obtiene el detalle completo de un cliente incluyendo estadísticas financieras
+ */
+export async function obtenerDetalleCliente(clienteId: string) {
+    try {
+        const cliente = await obtenerCliente(clienteId);
+
+        // 1. Obtener Citas (para historial y saldo pendiente)
+        const citasResponse = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.CITAS,
+            [
+                Query.equal('clienteId', clienteId),
+                Query.orderDesc('fechaCita'),
+                Query.limit(100) // Considerar paginación en el futuro
+            ]
+        );
+        const citas = citasResponse.documents as unknown as any[];
+
+        // 2. Obtener Pagos Realizados
+        const pagosResponse = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.PAGOS_CLIENTES,
+            [
+                Query.equal('clienteId', clienteId),
+                Query.orderDesc('fechaPago')
+            ]
+        );
+        const pagos = pagosResponse.documents as unknown as any[];
+
+        // 3. Calcular Estadísticas
+        const totalServicios = citas.filter(c => c.estado === 'completada').length;
+
+        // Total gastado = Suma de todos los pagos registrados
+        const totalPagado = pagos.reduce((sum, pago) => sum + (pago.monto || 0), 0);
+
+        // Saldo pendiente: Suma de precios de citas completadas que NO están marcadas como pagadas
+        const saldoPendiente = citas
+            .filter(c => c.estado === 'completada' && !c.pagadoPorCliente)
+            .reduce((sum, c) => sum + (c.precioAcordado || c.precioCliente || 0), 0);
+
+        // Próxima cita
+        const proximaCita = citas
+            .filter(c => new Date(c.fechaCita) > new Date() && c.estado !== 'cancelada' && c.estado !== 'completada')
+            .sort((a, b) => new Date(a.fechaCita).getTime() - new Date(b.fechaCita).getTime())[0];
+
+        return {
+            cliente,
+            estadisticas: {
+                totalServicios,
+                totalPagado,
+                saldoPendiente,
+                proximaCita: proximaCita || null
+            },
+            citas,
+            pagos
+        };
+
+    } catch (error: any) {
+        console.error("Error obteniendo detalle del cliente:", error);
+        throw new Error(error.message || "Error al obtener detalle del cliente");
+    }
+}
+
+/**
+ * Busca clientes por nombre, teléfono o email para autocomplete
+ */
+export async function buscarClientes(query: string): Promise<Cliente[]> {
+    try {
+        if (!query || query.length < 2) return [];
+
+        // Intentar búsqueda por índice de texto completo si está configurado
+        try {
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.CLIENTES,
+                [
+                    Query.search("nombre", query),
+                    Query.limit(5)
+                ]
+            );
+            if (response.documents.length > 0) return response.documents as unknown as Cliente[];
+        } catch (e) {
+            // Si falla search (no index), intentar contains o startsWith
+        }
+
+        // Fallback: búsqueda simple
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.CLIENTES,
+            [
+                Query.contains("nombre", query),
+                Query.limit(5)
+            ]
+        );
+
+        return response.documents as unknown as Cliente[];
+    } catch (error: any) {
+        console.error("Error buscando clientes:", error);
+        return [];
     }
 }

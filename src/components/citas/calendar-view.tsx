@@ -56,10 +56,7 @@ export function CalendarView({ citas, empleadosMap }: CalendarViewProps) {
 
     const getCitasForDay = (date: Date) => {
         const dateStr = format(date, "yyyy-MM-dd");
-        // Debug first day of month to avoid providing too many logs
-        if (date.getDate() === 1) {
-            console.log("Checking date:", dateStr, "Available Citas:", citas.length, citas[0]?.fechaCita);
-        }
+
         return citas.filter(cita => {
             return cita.fechaCita && cita.fechaCita.split("T")[0] === dateStr;
         }).sort((a, b) => a.horaCita.localeCompare(b.horaCita));

@@ -3,12 +3,10 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { account } from "@/lib/appwrite";
 import { Models } from "appwrite";
-import { obtenerClientePorEmail } from "@/lib/actions/clientes";
-import { obtenerEmpleadoPorEmail } from "@/lib/actions/empleados";
 
 interface AuthContextType {
     user: Models.User<Models.Preferences> | null;
-    profile: any | null; // Perfil de cliente si es rol cliente
+    profile: any | null;
     role: "admin" | "client" | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -29,29 +27,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const currentUser = await account.get();
             setUser(currentUser);
 
-            // 1. Detectar si es Cliente
-            const cliente = await obtenerClientePorEmail(currentUser.email);
+            // Buscar perfil en user_profile usando API route
+            try {
+                const response = await fetch('/api/user-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.$id })
+                });
 
-            if (cliente) {
-                setRole("client");
-                setProfile(cliente);
-            } else {
-                // 2. Si no es cliente, verificar si es Empleado/Admin
-                // IMPORTANTE: Esto evita que cualquier usuario registrado sea admin por defecto
-                const empleado = await obtenerEmpleadoPorEmail(currentUser.email);
+                if (response.ok) {
+                    const userProfile = await response.json();
 
-                if (empleado) {
-                    setRole("admin");
-                    // Por ahora el perfil admin puede ser null o el objeto empleado
-                    setProfile(empleado);
-                } else {
-                    // 3. Si no está en ninguna lista, es un usuario sin rol (Guest/Pending)
-                    // Esto previene el acceso no autorizado
-                    console.warn(`Usuario ${currentUser.email} no tiene rol asignado.`);
-                    setRole(null);
-                    setProfile(null);
+                    if (userProfile && userProfile.rol) {
+
+
+                        // Asignar rol desde user_profile
+                        if (userProfile.rol === 'admin') {
+
+                            setRole("admin");
+                            setProfile(userProfile);
+                        } else if (userProfile.rol === 'cliente') {
+
+                            setRole("client"); // Use "client" to match type definition
+                            setProfile(userProfile);
+                        } else {
+                            console.warn(`Rol desconocido: ${userProfile.rol}`);
+                            setRole(null);
+                            setProfile(null);
+                        }
+
+                        return; // Salir después de encontrar perfil
+                    }
                 }
+            } catch (error) {
+
             }
+
+            // Fallback: Si no hay perfil en user_profile, usuario sin rol
+            console.warn(`Usuario ${currentUser.email} no tiene perfil en user_profile`);
+            setRole(null);
+            setProfile(null);
 
         } catch (error) {
             setUser(null);
@@ -68,7 +83,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string) => {
         try {
+            // Primero intentar cerrar cualquier sesión activa
+            try {
+                await account.deleteSession("current");
+
+            } catch (error) {
+                // No hay sesión activa, continuar
+
+            }
+
+            // Crear nueva sesión
             await account.createEmailPasswordSession(email, password);
+
+
+            // Verificar autenticación y rol
             await checkAuth();
         } catch (error: any) {
             console.error("Error en login:", error);
@@ -78,7 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await account.deleteSession("current");
             await account.deleteSession("current");
             setUser(null);
             setRole(null);

@@ -22,6 +22,7 @@ import type {
 import { crearCliente, obtenerClientePorTelefono, actualizarCliente, obtenerClientePorEmail } from "@/lib/actions/clientes";
 import { registrarPuntos } from "@/lib/actions/puntos";
 import { crearDireccion } from "@/lib/actions/direcciones";
+import { obtenerServicio } from "@/lib/actions/catalogo";
 
 /**
  * Obtiene la lista de citas con filtros opcionales
@@ -103,13 +104,27 @@ export async function obtenerMisCitas(email: string): Promise<Cita[]> {
  */
 export async function obtenerCita(id: string): Promise<Cita> {
     try {
-        const cita = await databases.getDocument(
+        const doc = await databases.getDocument(
             DATABASE_ID,
             COLLECTIONS.CITAS,
             id
         );
 
-        return cita as unknown as Cita;
+        let cita = { ...doc } as unknown as Cita;
+
+        // Populate Servicio manually if references are not auto-expanded
+        if (cita.servicioId && !cita.servicio) {
+            const servicio = await obtenerServicio(cita.servicioId);
+            if (servicio) {
+                cita.servicio = servicio as any;
+                // Ensure backward compatibility if only 'categorias' array exists
+                if (!cita.servicio?.categoria && cita.servicio?.categorias && cita.servicio.categorias.length > 0) {
+                    cita.servicio.categoria = cita.servicio.categorias[0];
+                }
+            }
+        }
+
+        return cita;
     } catch (error: any) {
         console.error("Error obteniendo cita:", error);
         throw new Error(error.message || "Error al obtener cita");
@@ -153,7 +168,7 @@ export async function crearCita(
                     email: data.clienteEmail,
                     direccion: data.direccion,
                     ciudad: data.ciudad,
-                    tipoCliente: TipoCliente.RESIDENCIAL,
+                    tipoCliente: "residencial",
                     frecuenciaPreferida: FrecuenciaCliente.UNICA,
                 });
                 if (nuevoCliente.success && nuevoCliente.data) {
@@ -177,7 +192,7 @@ export async function crearCita(
 
         if (clienteId && data.direccion && data.ciudad && !isUsingExistingAddress) {
             try {
-                console.log("✅ Creating NEW address");
+
 
                 const result = await crearDireccion({
                     clienteId: clienteId,
@@ -200,6 +215,7 @@ export async function crearCita(
 
         const citaData = {
             servicioId: data.servicioId || "limpieza-general",
+            categoriaSeleccionada: data.categoriaSeleccionada,
             clienteId: clienteId || "",
             clienteNombre: data.clienteNombre,
             clienteTelefono: data.clienteTelefono,
@@ -216,13 +232,10 @@ export async function crearCita(
             empleadosAsignados: data.empleadosAsignados || [],
             estado: EstadoCita.PENDIENTE,
             precioCliente: data.precioCliente,
-            precioAcordado: data.precioAcordado || data.precioCliente,
             metodoPago: data.metodoPago,
             pagadoPorCliente: false,
             detallesAdicionales: data.detallesAdicionales,
             notasInternas: data.notasInternas,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
         };
 
         const newCita = await databases.createDocument(
@@ -266,16 +279,30 @@ export async function actualizarCita(
     try {
         const updateData: any = {
             ...data,
-            updatedAt: new Date().toISOString(),
         };
 
         // Get current appointment state BEFORE updating
         const currentCita = await databases.getDocument(DATABASE_ID, COLLECTIONS.CITAS, id);
         const wasAlreadyCompleted = currentCita.estado === EstadoCita.COMPLETADA;
 
-        // Si se completa la cita (y NO estaba completada antes), agregar fecha de completado y calcular puntos
+        // Si se va a completar, asignar fecha antes del update
         if (data.estado === EstadoCita.COMPLETADA && !wasAlreadyCompleted) {
             updateData.completedAt = new Date().toISOString();
+        }
+
+        // Update the appointment FIRST to ensure DB is consistent for queries
+        await databases.updateDocument(
+            DATABASE_ID,
+            COLLECTIONS.CITAS,
+            id,
+            updateData
+        );
+
+        // THEN execute post-update logic (points, stats, notifications)
+        // This ensures recalcularServiciosEmpleado counts the just-completed appointment
+
+        // Si se completa la cita (y NO estaba completada antes), agregar fecha de completado y calcular puntos
+        if (data.estado === EstadoCita.COMPLETADA && !wasAlreadyCompleted) {
 
             // 2. Registrar puntos y actualizar cliente (Refactorizado para usar action centralizada)
             try {
@@ -294,41 +321,28 @@ export async function actualizarCita(
                     console.log("📊 Points registration result:", puntosResult);
                 }
 
-                // 3. Actualizar contador de servicios de empleados asignados
+                // 3. Actualizar contador de servicios de empleados asignados (ROBUSTO)
                 if (currentCita.empleadosAsignados && Array.isArray(currentCita.empleadosAsignados)) {
+                    // Importar dinámicamente para evitar ciclos
+                    const { recalcularServiciosEmpleado } = await import('./empleados');
+
                     for (const empleadoId of currentCita.empleadosAsignados) {
                         try {
-                            const empleado = await databases.getDocument(DATABASE_ID, COLLECTIONS.EMPLEADOS, empleadoId);
-                            await databases.updateDocument(
-                                DATABASE_ID,
-                                COLLECTIONS.EMPLEADOS,
-                                empleadoId,
-                                {
-                                    serviciosRealizados: (empleado.serviciosRealizados || 0) + 1
-                                }
-                            );
-                            console.log(`✅ Updated employee ${empleadoId} service count`);
+                            await recalcularServiciosEmpleado(empleadoId);
+                            console.log(`✅ Recalculated employee ${empleadoId} service count`);
                         } catch (empError) {
-                            console.warn(`Error updating employee ${empleadoId}:`, empError);
+                            console.warn(`Error recalculating employee ${empleadoId}:`, empError);
                         }
                     }
                 } else {
                     console.warn("⚠️ No employees assigned to this appointment");
                 }
             } catch (errorPuntos) {
-                console.error("❌ ERROR registrando puntos en actualizarCita:", errorPuntos);
+                console.error("❌ ERROR registrando puntos/servicios post-update:", errorPuntos);
             }
         } else if (data.estado === EstadoCita.COMPLETADA && wasAlreadyCompleted) {
-            console.log("ℹ️ Appointment was already completed, skipping points registration to avoid duplicates");
+            console.log("ℹ️ Appointment was already completed, skipping points/stats to avoid duplicates");
         }
-
-        // Update the appointment
-        await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.CITAS,
-            id,
-            updateData
-        );
 
         // RECALCULAR ESTADÍSTICAS AUTOMÁTICAMENTE
         // Esto asegura que los contadores siempre reflejen la realidad de la BD
