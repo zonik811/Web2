@@ -440,7 +440,7 @@ export default function ComprasPage() {
                 title={`Registrar Compra`}
                 icon={ShoppingCart}
                 open={isModalOpen}
-                onOpen Change={setIsModalOpen}
+                onOpenChange={setIsModalOpen}
                 maxWidth="3xl"
                 footer={
                     <>
