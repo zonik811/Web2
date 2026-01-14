@@ -2,7 +2,7 @@
 
 import { databases, storage } from "@/lib/appwrite-server"; // Use Server SDK
 import { DATABASE_ID, COLLECTIONS, STORAGE_BUCKET_ID } from "@/lib/appwrite";
-import { ID, Query, InputFile } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 import {
     type Servicio,
     type CrearServicioInput,
@@ -38,12 +38,13 @@ export async function obtenerServiciosAdmin(): Promise<Servicio[]> {
  */
 async function uploadFileServer(file: File): Promise<string> {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const inputFile = InputFile.fromBuffer(buffer, file.name);
+    // Create a File object compatible with Appwrite SDK (which uses standard File)
+    const fileObj = new File([buffer], file.name, { type: file.type });
 
     const upload = await storage.createFile(
         STORAGE_BUCKET_ID,
         ID.unique(),
-        inputFile
+        fileObj
     );
     return upload.$id;
 }

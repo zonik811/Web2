@@ -186,7 +186,7 @@ async function main() {
       await databases.createEnumAttribute(DATABASE_ID, servicios.$id, 'unidadPrecio', ['hora', 'metrocuadrado', 'servicio'], true);
       await databases.createIntegerAttribute(DATABASE_ID, servicios.$id, 'duracionEstimada', true);
       await databases.createStringAttribute(DATABASE_ID, servicios.$id, 'imagen', 100, false);
-      await databases.createStringAttribute(DATABASE_ID, servicios.$id, 'caracteristicas', 5000, false, true);
+      await databases.createStringAttribute(DATABASE_ID, servicios.$id, 'caracteristicas', 5000, false, undefined, true);
       await databases.createIntegerAttribute(DATABASE_ID, servicios.$id, 'requierePersonal', true);
       await databases.createBooleanAttribute(DATABASE_ID, servicios.$id, 'activo', true, true);
       await databases.createBooleanAttribute(DATABASE_ID, servicios.$id, 'destacado', false, false);
