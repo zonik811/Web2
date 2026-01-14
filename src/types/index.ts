@@ -13,6 +13,7 @@ export enum CargoEmpleado {
     LIMPIADOR = "limpiador",
     SUPERVISOR = "supervisor",
     ESPECIALISTA = "especialista",
+    TECNICO = "Técnico",
 }
 
 
