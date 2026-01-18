@@ -54,7 +54,7 @@ export async function obtenerReporteVentas(fechaInicio: Date, fechaFin: Date): P
         // Note: For huge data, database-level aggregation is better, but client-side (server here) 
         // aggregation is often necessary with Appwrite until functions are used.
         while (hasMore) {
-            const currentQueries = cursor ? [...queries, Query.cursorAfter(cursor)] : queries;
+            const currentQueries: string[] = cursor ? [...queries, Query.cursorAfter(cursor)] : queries;
             const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.ORDENES, currentQueries);
 
             allOrdenes = [...allOrdenes, ...res.documents];
