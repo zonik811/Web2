@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,13 +14,15 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Users as UsersIcon, ChevronRight, Filter, Eye } from "lucide-react";
+import { Plus, Search, Users as UsersIcon, ChevronRight, UserCheck, UserX, Award, TrendingUp, Briefcase } from "lucide-react";
 import { obtenerEmpleados } from "@/lib/actions/empleados";
 import { obtenerURLArchivo } from "@/lib/appwrite";
 import { nombreCompleto } from "@/lib/utils";
 import type { Empleado } from "@/types";
 import { Input } from "@/components/ui/input";
 import { EmployeeOrderCount } from "@/components/admin/personal/EmployeeOrderCount";
+import { motion } from "framer-motion";
+import { ExportExcelButton } from "@/components/ui/ExportExcelButton";
 
 export default function PersonalPage() {
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -62,184 +64,382 @@ export default function PersonalPage() {
             filtrados = filtrados.filter((e) =>
                 nombreCompleto(e.nombre, e.apellido)
                     .toLowerCase()
-                    .includes(busqueda.toLowerCase())
+                    .includes(busqueda.toLowerCase()) ||
+                e.documento.toLowerCase().includes(busqueda.toLowerCase())
             );
         }
 
         setEmpleadosFiltrados(filtrados);
     };
 
+    // Calculate stats
+    const stats = {
+        total: empleados.length,
+        activos: empleados.filter(e => e.activo).length,
+        inactivos: empleados.filter(e => !e.activo).length,
+        serviciosTotales: empleados.reduce((sum, e) => sum + (e.totalServicios || 0), 0),
+        especialistas: empleados.filter(e => e.cargo === "especialista").length,
+        supervisores: empleados.filter(e => e.cargo === "supervisor").length,
+    };
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-900 border-t-transparent" />
-                    <p className="text-sm text-gray-500 font-medium">Cargando equipo...</p>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-600 font-medium">Cargando equipo...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Personal</h1>
-                    <p className="text-gray-500 text-base mt-1">
-                        Gestiona y supervisa a tu equipo de trabajo ({empleadosFiltrados.length} miembros)
-                    </p>
-                </div>
-                <Link href="/admin/personal/nuevo">
-                    <Button size="lg" className="bg-gray-900 text-white hover:bg-black font-medium shadow-md transition-all hover:shadow-lg w-full md:w-auto">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Nuevo Empleado
-                    </Button>
-                </Link>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+            {/* Epic Header */}
+            <div className="relative overflow-hidden bg-white border-b border-slate-200 shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-indigo-50/50 to-purple-50/50" />
+                <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob" />
+                <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000" />
 
-            {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-1 rounded-xl">
-                <div className="relative w-full sm:max-w-md">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                    <Input
-                        placeholder="Buscar por nombre, documento..."
-                        value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
-                        className="pl-10 h-11 bg-gray-50 border-gray-200 focus:bg-white transition-colors text-base"
-                    />
-                </div>
-                <div className="flex bg-gray-100 p-1.5 rounded-lg w-full sm:w-auto">
-                    {(["activos", "todos", "inactivos"] as const).map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFiltro(f)}
-                            className={`flex-1 sm:flex-none px-6 py-2 text-sm font-medium rounded-md transition-all ${filtro === f
-                                ? "bg-white text-gray-900 shadow-sm"
-                                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                                } capitalize`}
+                <div className="relative px-6 pt-8 pb-12">
+                    <div className="max-w-7xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-8"
                         >
-                            {f}
-                        </button>
-                    ))}
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
+                                    <UsersIcon className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                        Gestión de Personal
+                                    </h1>
+                                    <p className="text-slate-600 font-medium mt-1">
+                                        Administra y supervisa a tu equipo de trabajo ({empleadosFiltrados.length} miembros)
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider">Total Equipo</p>
+                                                <p className="text-5xl font-black mt-2">{stats.total}</p>
+                                                <p className="text-xs text-blue-100 mt-1">Empleados registrados</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <UsersIcon className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">Activos</p>
+                                                <p className="text-5xl font-black mt-2">{stats.activos}</p>
+                                                <p className="text-xs text-emerald-100 mt-1">Disponibles hoy</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <UserCheck className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-purple-100 text-sm font-semibold uppercase tracking-wider">Servicios</p>
+                                                <p className="text-5xl font-black mt-2">{stats.serviciosTotales}</p>
+                                                <p className="text-xs text-purple-100 mt-1">Total realizados</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <TrendingUp className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-orange-500 to-red-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-orange-100 text-sm font-semibold uppercase tracking-wider">Especialistas</p>
+                                                <p className="text-5xl font-black mt-2">{stats.especialistas}</p>
+                                                <p className="text-xs text-orange-100 mt-1">Expertos técnicos</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <Award className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="flex items-center gap-3"
+                        >
+                            <div className="flex gap-3">
+                                <ExportExcelButton
+                                    data={empleadosFiltrados}
+                                    fileName="Reporte_Personal"
+                                    mapData={(e) => ({
+                                        Nombre: nombreCompleto(e.nombre, e.apellido),
+                                        Documento: e.documento,
+                                        Cargo: e.cargo,
+                                        Especialidades: e.especialidades.join(", "),
+                                        Servicios: e.totalServicios || 0,
+                                        Activo: e.activo ? "Si" : "No",
+                                        Email: e.email,
+                                        Telefono: e.telefono
+                                    })}
+                                    className="bg-white text-blue-700 border-blue-200 hover:bg-blue-50 shadow-sm"
+                                />
+                                <Link href="/admin/personal/nuevo">
+                                    <Button
+                                        size="lg"
+                                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all border-0"
+                                    >
+                                        <Plus className="mr-2 h-5 w-5" />
+                                        Nuevo Empleado
+                                    </Button>
+                                </Link>
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
             </div>
 
-            {/* Employee Table */}
-            <Card className="border border-gray-200 shadow-sm bg-white overflow-hidden rounded-xl">
-                {empleadosFiltrados.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="bg-gray-50 p-4 rounded-full shadow-inner inline-block mb-4">
-                            <UsersIcon className="h-10 w-10 text-gray-300" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900">No se encontraron empleados</h3>
-                        <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                            {busqueda
-                                ? `No hay resultados para "${busqueda}"`
-                                : "Tu equipo está vacío. Comienza agregando un nuevo empleado."}
-                        </p>
-                        {!busqueda && (
-                            <Link href="/admin/personal/nuevo">
-                                <Button variant="outline" className="mt-6 border-gray-300">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Registrar Primer Empleado
-                                </Button>
-                            </Link>
+            {/* Content Section */}
+            <div className="px-6 py-8">
+                <div className="max-w-7xl mx-auto">
+                    {/* Filter Bar */}
+                    <Card className="shadow-lg border-slate-200 mb-6">
+                        <CardContent className="p-6">
+                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                                <div className="relative w-full sm:max-w-md">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                    <Input
+                                        placeholder="Buscar por nombre o documento..."
+                                        value={busqueda}
+                                        onChange={(e) => setBusqueda(e.target.value)}
+                                        className="pl-11 h-12 bg-slate-50 border-slate-300 focus:bg-white transition-colors text-base"
+                                    />
+                                </div>
+                                <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-inner w-full sm:w-auto">
+                                    {(["activos", "todos", "inactivos"] as const).map((f) => (
+                                        <button
+                                            key={f}
+                                            onClick={() => setFiltro(f)}
+                                            className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg transition-all ${filtro === f
+                                                ? "bg-white text-slate-900 shadow-md"
+                                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                                } capitalize`}
+                                        >
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Employee Table */}
+                    <Card className="shadow-xl border-slate-200">
+                        {empleadosFiltrados.length === 0 ? (
+                            <CardContent className="p-12">
+                                <div className="text-center">
+                                    <div className="bg-slate-50 p-6 rounded-full shadow-inner inline-block mb-4">
+                                        <UsersIcon className="h-16 w-16 text-slate-300" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">No se encontraron empleados</h3>
+                                    <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                                        {busqueda
+                                            ? `No hay resultados para "${busqueda}"`
+                                            : "Tu equipo está vacío. Comienza agregando un nuevo empleado."}
+                                    </p>
+                                    {!busqueda && (
+                                        <Link href="/admin/personal/nuevo">
+                                            <Button variant="outline" className="border-slate-300 shadow-md">
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Registrar Primer Empleado
+                                            </Button>
+                                        </Link>
+                                    )}
+                                </div>
+                            </CardContent>
+                        ) : (
+                            <CardContent className="p-6">
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-bold text-slate-800">Miembros del Equipo</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Gestiona la información de cada empleado</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                    <Table>
+                                        <TableHeader className="bg-gradient-to-r from-slate-50 to-blue-50">
+                                            <TableRow>
+                                                <TableHead className="w-[350px] pl-6 py-4 font-bold text-slate-700">Empleado</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Cargo</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Especialidades</TableHead>
+                                                <TableHead className="text-center font-bold text-slate-700">Servicios</TableHead>
+                                                <TableHead className="text-center font-bold text-slate-700">Órdenes</TableHead>
+                                                <TableHead className="text-center font-bold text-slate-700">Estado</TableHead>
+                                                <TableHead className="text-right pr-6 font-bold text-slate-700">Acciones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {empleadosFiltrados.map((empleado, index) => (
+                                                <motion.tr
+                                                    key={empleado.$id}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.03 }}
+                                                    className="hover:bg-blue-50/50 transition-colors border-b border-slate-100 last:border-0 group"
+                                                >
+                                                    <TableCell className="pl-6 py-4">
+                                                        <div className="flex items-center space-x-4">
+                                                            <Avatar className="h-12 w-12 border-2 border-white shadow-lg ring-2 ring-blue-100">
+                                                                {empleado.foto ? (
+                                                                    <AvatarImage
+                                                                        src={obtenerURLArchivo(empleado.foto || "")}
+                                                                        alt={nombreCompleto(empleado.nombre, empleado.apellido)}
+                                                                        className="object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                                                                        {empleado.nombre[0]}{empleado.apellido[0]}
+                                                                    </AvatarFallback>
+                                                                )}
+                                                            </Avatar>
+                                                            <div>
+                                                                <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                                                    {nombreCompleto(empleado.nombre, empleado.apellido)}
+                                                                </p>
+                                                                <p className="text-sm text-slate-500 font-mono">{empleado.documento}</p>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`font-semibold capitalize px-3 py-1.5 ${empleado.cargo === "supervisor"
+                                                                ? "text-violet-700 border-violet-300 bg-violet-50"
+                                                                : empleado.cargo === "especialista"
+                                                                    ? "text-blue-700 border-blue-300 bg-blue-50"
+                                                                    : "text-slate-700 border-slate-300 bg-slate-50"
+                                                                }`}
+                                                        >
+                                                            <Briefcase className="h-3 w-3 mr-1" />
+                                                            {empleado.cargo}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-wrap gap-1.5 max-w-[250px]">
+                                                            {empleado.especialidades.slice(0, 2).map((esp, i) => (
+                                                                <span
+                                                                    key={i}
+                                                                    className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200"
+                                                                >
+                                                                    {esp.replace(/_/g, " ")}
+                                                                </span>
+                                                            ))}
+                                                            {empleado.especialidades.length > 2 && (
+                                                                <span
+                                                                    className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200"
+                                                                    title={empleado.especialidades.slice(2).join(", ")}
+                                                                >
+                                                                    +{empleado.especialidades.length - 2}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge className="bg-purple-100 text-purple-700 border-purple-300 font-bold text-base px-3 py-1">
+                                                            {empleado.totalServicios || 0}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <EmployeeOrderCount empleadoId={empleado.$id} />
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex justify-center">
+                                                            <div
+                                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${empleado.activo
+                                                                    ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                                                                    : "bg-slate-100 text-slate-600 border border-slate-300"
+                                                                    }`}
+                                                            >
+                                                                <span
+                                                                    className={`h-2 w-2 rounded-full ${empleado.activo ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                                                        }`}
+                                                                />
+                                                                {empleado.activo ? "Activo" : "Inactivo"}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        <Link href={`/admin/personal/${empleado.$id}`}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-10 w-10 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all shadow-sm"
+                                                            >
+                                                                <ChevronRight className="h-5 w-5" />
+                                                            </Button>
+                                                        </Link>
+                                                    </TableCell>
+                                                </motion.tr>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
                         )}
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50 border-b border-gray-100">
-                                <TableRow>
-                                    <TableHead className="w-[350px] pl-6 py-4 font-semibold text-gray-700">Empleado</TableHead>
-                                    <TableHead className="font-semibold text-gray-700">Cargo</TableHead>
-                                    <TableHead className="font-semibold text-gray-700">Especialidades</TableHead>
-                                    <TableHead className="text-center font-semibold text-gray-700">Servicios</TableHead>
-                                    <TableHead className="text-center font-semibold text-gray-700">Órdenes</TableHead>
-                                    <TableHead className="text-center font-semibold text-gray-700">Estado</TableHead>
-                                    <TableHead className="text-right pr-6 font-semibold text-gray-700">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {empleadosFiltrados.map((empleado) => (
-                                    <TableRow key={empleado.$id} className="hover:bg-gray-50/80 transition-colors border-b border-gray-100 last:border-0 group">
-                                        <TableCell className="pl-6 py-4">
-                                            <div className="flex items-center space-x-4">
-                                                <Avatar className="h-11 w-11 border-2 border-white shadow-sm ring-1 ring-gray-100">
-                                                    {empleado.foto ? (
-                                                        <AvatarImage
-                                                            src={obtenerURLArchivo(empleado.foto || "")}
-                                                            alt={nombreCompleto(empleado.nombre, empleado.apellido)}
-                                                            className="object-cover"
-                                                        />
-                                                    ) : (
-                                                        <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-medium">
-                                                            {empleado.nombre[0]}{empleado.apellido[0]}
-                                                        </AvatarFallback>
-                                                    )}
-                                                </Avatar>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
-                                                        {nombreCompleto(empleado.nombre, empleado.apellido)}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500 font-mono tracking-tight">{empleado.documento}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={`font-medium capitalize px-3 py-1 bg-white shadow-sm ${empleado.cargo === "supervisor" ? "text-violet-700 border-violet-200 bg-violet-50" :
-                                                empleado.cargo === "especialista" ? "text-blue-700 border-blue-200 bg-blue-50" :
-                                                    "text-gray-700 border-gray-200 bg-gray-50"
-                                                }`}>
-                                                {empleado.cargo}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-1.5 max-w-[250px]">
-                                                {empleado.especialidades.slice(0, 2).map((esp, i) => (
-                                                    <span key={i} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                                        {esp.replace(/_/g, " ")}
-                                                    </span>
-                                                ))}
-                                                {empleado.especialidades.length > 2 && (
-                                                    <span className="inline-flex items-center px-1.5 py-1 rounded text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200" title={empleado.especialidades.slice(2).join(", ")}>
-                                                        +{empleado.especialidades.length - 2}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-semibold text-gray-700 text-base">
-                                            {empleado.totalServicios || 0}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <EmployeeOrderCount empleadoId={empleado.$id} />
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex justify-center">
-                                                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${empleado.activo
-                                                    ? "bg-emerald-100/50 text-emerald-700 border border-emerald-200"
-                                                    : "bg-gray-100 text-gray-600 border border-gray-200"
-                                                    }`}>
-                                                    <span className={`h-1.5 w-1.5 rounded-full ${empleado.activo ? "bg-emerald-500" : "bg-gray-400"}`}></span>
-                                                    {empleado.activo ? "Activo" : "Inactivo"}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-6">
-                                            <Link href={`/admin/personal/${empleado.$id}`}>
-                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all">
-                                                    <ChevronRight className="h-5 w-5" />
-                                                </Button>
-                                            </Link>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
-            </Card>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 }

@@ -23,10 +23,12 @@ export default function LoginPage() {
         if (!authLoading && role) {
 
             if (role === "admin") {
-
                 router.push("/admin");
+            } else if (role === "cajero") {
+                router.push("/admin/ventas/pos");
+            } else if (role === "tecnico") {
+                router.push("/admin/ordenes-trabajo");
             } else if (role === "client") {
-
                 router.push("/mi-cuenta");
             }
         }
@@ -62,14 +64,15 @@ export default function LoginPage() {
 
 
             if (currentRole === "admin") {
-
                 router.push("/admin");
+            } else if (currentRole === "cajero") {
+                router.push("/admin/ventas/pos");
+            } else if (currentRole === "tecnico") {
+                router.push("/admin/ordenes-trabajo");
             } else if (currentRole === "client") {
-
                 router.push("/mi-cuenta");
             } else {
                 // Si no hay rol aún, dejamos que el useEffect lo maneje
-
             }
         } catch (err: any) {
             setError(err.message || "Error al iniciar sesión");

@@ -54,16 +54,18 @@ export async function registrarPagoCompra(data: {
         );
 
         // Update Status if paid in full (or close enough for floating point)
-        if (totalPagado >= (compra.total - 1)) { // 1 peso margin of error
-            if (compra.estado_pago !== 'pagado') {
-                await databases.updateDocument(
-                    DB_ID,
-                    COLL_COMPRAS,
-                    data.compra_id,
-                    { estado_pago: 'pagado' }
-                );
+        // Update Status and Total Paid
+        const nuevoEstado = (totalPagado >= (compra.total - 1)) ? 'pagado' : compra.estado_pago;
+
+        await databases.updateDocument(
+            DB_ID,
+            COLL_COMPRAS,
+            data.compra_id,
+            {
+                estado_pago: nuevoEstado,
+                monto_pagado: totalPagado
             }
-        }
+        );
 
         revalidatePath('/admin/inventario/compras');
         return { success: true };

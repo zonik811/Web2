@@ -54,6 +54,15 @@ export interface CompraProveedor extends Models.Document {
     subtotal?: number;
     iva?: number;
 
+    // Legacy/Schema Fields
+    numeroCompra?: string;
+    proveedorNombre?: string; // Flattened or joined
+    estado?: string; // Legacy status 'recibida', 'pendiente'
+    metodoPago?: string;
+    creadoPor?: string;
+    pagado?: boolean;
+    monto_pagado?: number; // Total amount paid so far
+
     // Relations
     proveedor?: Proveedor;
 }

@@ -7,7 +7,7 @@ import { Models } from "appwrite";
 interface AuthContextType {
     user: Models.User<Models.Preferences> | null;
     profile: any | null;
-    role: "admin" | "client" | null;
+    role: "admin" | "client" | "cajero" | "tecnico" | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
     const [profile, setProfile] = useState<any | null>(null);
-    const [role, setRole] = useState<"admin" | "client" | null>(null);
+    const [role, setRole] = useState<"admin" | "client" | "cajero" | "tecnico" | null>(null);
     const [loading, setLoading] = useState(true);
 
     const checkAuth = async () => {
@@ -43,12 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                         // Asignar rol desde user_profile
                         if (userProfile.rol === 'admin') {
-
                             setRole("admin");
                             setProfile(userProfile);
+                        } else if (userProfile.rol === 'cajero') {
+                            setRole("cajero");
+                            setProfile(userProfile);
+                        } else if (userProfile.rol === 'tecnico') {
+                            setRole("tecnico");
+                            setProfile(userProfile);
                         } else if (userProfile.rol === 'cliente') {
-
-                            setRole("client"); // Use "client" to match type definition
+                            setRole("client");
                             setProfile(userProfile);
                         } else {
                             console.warn(`Rol desconocido: ${userProfile.rol}`);

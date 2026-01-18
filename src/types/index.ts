@@ -432,3 +432,27 @@ export interface CrearComisionInput {
 
 // Export all Work Order types
 export * from './ordenes-trabajo';
+
+// Export all Asistencia types
+export * from './asistencia';
+
+// Export all Permisos types
+export * from './permisos';
+
+// Export all Horarios types
+export * from './horarios';
+
+// Export all Vacaciones types
+export * from './vacaciones';
+
+// Export all Turnos types
+export * from './turnos';
+
+// Export all Horas Extras types
+export * from './horas-extras';
+
+// Export all Compensatorios types
+export * from './compensatorios';
+
+// Export all Banco Horas types
+export * from './banco-horas';

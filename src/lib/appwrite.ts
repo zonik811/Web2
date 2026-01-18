@@ -1,4 +1,5 @@
 import { Client, Databases, Storage, Account } from "appwrite";
+import { Client as NodeClient, Databases as NodeDatabases } from "node-appwrite";
 
 // Cliente de Appwrite
 const client = new Client()
@@ -9,6 +10,20 @@ const client = new Client()
 export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
+
+// Admin Client (Server Side)
+export const createAdminClient = () => {
+    const client = new NodeClient()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!)
+        .setKey(process.env.APPWRITE_API_KEY!);
+
+    return {
+        get database() {
+            return new NodeDatabases(client);
+        }
+    };
+};
 
 // IDs de recursos
 export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
@@ -43,6 +58,7 @@ export const COLLECTIONS = {
     USER_PROFILE: 'user_profile',
     CARGOS: 'cargos',
     ESPECIALIDADES: 'especialidades',
+    PAGOS_COMPRAS: 'pago_compras',
 
     // Órdenes de Trabajo
     VEHICULOS: 'vehiculos',
@@ -62,8 +78,28 @@ export const COLLECTIONS = {
     // Facturas y Pagos
     FACTURAS: 'facturas',
 
+    // Control de Asistencia
+    ASISTENCIAS: 'asistencias',
+    CONFIGURACION_ASISTENCIA: 'configuracion_asistencia',
+    PERMISOS: 'permisos',
+    HORARIOS_EMPLEADO: 'horarios_empleado',
+    VACACIONES: 'vacaciones',
+    SALDO_VACACIONES: 'saldo_vacaciones',
+    TURNOS: 'turnos',
+    ASIGNACION_TURNOS: 'asignacion_turnos',
+    HORAS_EXTRAS: 'horas_extras',
+    DIAS_FESTIVOS: 'dias_festivos',
+    COMPENSATORIOS: 'compensatorios',
+    BANCO_HORAS: 'banco_horas',
+
+    // POS & Caja
+    TURNOS_CAJA: 'turnos_caja',
+    MOVIMIENTOS_CAJA: 'movimientos_caja',
+    ORDEN_DETALLES: 'orden_detalles',
+
     // Alias
     MOVIMIENTOS: 'movimientos_inventario',
+    PEDIDOS_CATALOGO: 'pedidos_catalogo',
 };
 
 // Funciones helper para Storage

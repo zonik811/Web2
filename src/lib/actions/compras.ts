@@ -61,7 +61,7 @@ export async function registrarCompra(data: {
             proveedor_id: data.proveedor_id,
             fecha_compra: data.fecha_compra, // Datetime
             factura_referencia: data.factura_referencia,
-            comprobante_url: data.comprobante_url,
+            comprobante_url: data.comprobante_url || undefined, // Send undefined if empty string to avoid URL validation error
             detalles_items: JSON.stringify(data.items), // String representation
             subtotal: subtotal,
             iva: impuestos,

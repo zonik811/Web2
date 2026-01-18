@@ -23,6 +23,7 @@ import Link from "next/link";
 import { OrderStateModals } from "@/components/admin/orders/OrderStateModals";
 import { OrderDetailModal } from "@/components/admin/orders/OrderDetailModal";
 import { toast } from "sonner";
+import { ExportExcelButton } from "@/components/ui/ExportExcelButton";
 
 export default function PedidosCatalogoPage() {
     const [pedidos, setPedidos] = useState<PedidoCatalogo[]>([]);
@@ -284,10 +285,26 @@ export default function PedidosCatalogoPage() {
 
                 {/* Tabla de Pedidos */}
                 <Card className="border-0 shadow-2xl">
-                    <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100 border-b-2 border-purple-200">
+                    <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100 border-b-2 border-purple-200 flex flex-row items-center justify-between">
                         <CardTitle className="text-2xl font-bold">
                             Listado de Pedidos ({filteredPedidos.length})
                         </CardTitle>
+                        <ExportExcelButton
+                            data={filteredPedidos}
+                            fileName="Reporte_Ventas_Catalogo"
+                            mapData={(p) => ({
+                                Pedido: p.numero_pedido,
+                                Cliente: p.cliente_nombre,
+                                Telefono: p.cliente_telefono,
+                                Fecha: new Date(p.fecha_creacion).toLocaleDateString() + ' ' + new Date(p.fecha_creacion).toLocaleTimeString(),
+                                Estado: p.estado,
+                                Total: p.total,
+                                Pagado: p.monto_pagado,
+                                Saldo: p.saldo_pendiente,
+                                Cantidad_Items: parseItems(p.items).length
+                            })}
+                            className="bg-white/80 hover:bg-white text-purple-700 border-purple-200 shadow-sm h-9"
+                        />
                     </CardHeader>
                     <CardContent className="p-0">
                         {loading ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,12 @@ import {
     User,
     Phone,
     Mail,
-    MoreHorizontal,
     Edit,
     Trash2,
-    CheckCircle2,
-    X,
     Building2,
-    Home
+    Home,
+    Users,
+    TrendingUp
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -37,15 +36,15 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter
 } from "@/components/ui/dialog";
 import { obtenerClientes, crearCliente, actualizarCliente, eliminarCliente } from "@/lib/actions/clientes";
 import { obtenerTiposCliente } from "@/lib/actions/parametricas";
-import { formatearPrecio, formatearFecha } from "@/lib/utils";
 import type { Cliente } from "@/types";
-import { TipoCliente, FrecuenciaCliente } from "@/types";
+import { FrecuenciaCliente } from "@/types";
+import { ExportExcelButton } from "@/components/ui/ExportExcelButton";
 import { ClientOrderCount } from "@/components/admin/clientes/ClientOrderCount";
+import { motion } from "framer-motion";
 
 export default function ClientesPage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -55,14 +54,12 @@ export default function ClientesPage() {
     const [showDialog, setShowDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
-    // Filtros
     const [filters, setFilters] = useState({
         search: "",
         ciudad: "todas",
         tipo: "todos"
     });
 
-    // Estado del formulario
     const [formData, setFormData] = useState({
         id: "",
         nombre: "",
@@ -116,7 +113,6 @@ export default function ClientesPage() {
         }
 
         if (filters.tipo !== "todos") {
-            // Comparación laxa para soportar tipos antiguos vs nuevos IDs
             resultado = resultado.filter(c =>
                 c.tipoCliente?.toLowerCase() === filters.tipo.toLowerCase() ||
                 tiposCliente.find(t => t.$id === filters.tipo && t.nombre.toLowerCase() === c.tipoCliente?.toLowerCase())
@@ -196,234 +192,334 @@ export default function ClientesPage() {
 
     const ciudades = Array.from(new Set(clientes.map(c => c.ciudad))).filter(Boolean).sort();
 
-    // Stats Dinámicos
     const totalClientes = clientes.length;
     const clientesActivos = clientes.filter(c => c.activo).length;
-    // Agrupamos por tipo (normalizando strings)
     const statsPorTipo = clientes.reduce((acc: any, curr) => {
         const tipo = curr.tipoCliente || 'Sin Tipo';
         acc[tipo] = (acc[tipo] || 0) + 1;
         return acc;
     }, {});
 
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Clientes</h1>
-                    <p className="text-gray-500 mt-1">Administra tu base de datos de clientes y contactos</p>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="h-16 w-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-600 font-medium">Cargando clientes...</p>
                 </div>
-                <Button
-                    onClick={handleCreate}
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 transition-all hover:scale-105"
-                >
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
-                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50">
+            {/* Epic Header */}
+            <div className="relative overflow-hidden bg-white border-b border-slate-200 shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 via-pink-50/50 to-rose-50/50" />
+                <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob" />
+                <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000" />
+
+                <div className="relative px-6 pt-8 pb-12">
+                    <div className="max-w-7xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-8"
+                        >
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
+                                    <Users className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent">
+                                        Gestión de Clientes
+                                    </h1>
+                                    <p className="text-slate-600 font-medium mt-1">
+                                        Administra tu base de datos de clientes y contactos ({filteredClientes.length} clientes)
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-purple-100 text-sm font-semibold uppercase tracking-wider">Total Clientes</p>
+                                                <p className="text-5xl font-black mt-2">{totalClientes}</p>
+                                                <p className="text-xs text-purple-100 mt-1">{clientesActivos} activos</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <User className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            {Object.entries(statsPorTipo).slice(0, 2).map(([tipo, count], idx) => (
+                                <motion.div
+                                    key={tipo}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 + idx * 0.1 }}
+                                >
+                                    <Card className="shadow-lg border-slate-200">
+                                        <CardContent className="p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className={`p-3 ${idx === 0 ? 'bg-blue-100' : 'bg-green-100'} rounded-xl`}>
+                                                    {idx === 0 ? (
+                                                        <Home className="h-6 w-6 text-blue-600" />
+                                                    ) : (
+                                                        <Building2 className="h-6 w-6 text-green-600" />
+                                                    )}
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-semibold text-slate-600 capitalize">{tipo}</p>
+                                                    <p className="text-3xl font-black text-slate-900 mt-1">{count as number}</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${idx === 0 ? 'bg-blue-500' : 'bg-green-500'}`}
+                                                    style={{ width: `${totalClientes ? ((count as number) / totalClientes) * 100 : 0}%` }}
+                                                />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
+
+                            {Object.keys(statsPorTipo).length < 2 && (
+                                <Card className="shadow-lg border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center">
+                                    <p className="text-slate-400 text-sm">Más estadísticas pronto...</p>
+                                </Card>
+                            )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="flex items-center gap-3"
+                        >
+                            <div className="flex gap-3">
+                                <ExportExcelButton
+                                    data={filteredClientes}
+                                    fileName="Reporte_Clientes"
+                                    mapData={(c) => ({
+                                        Nombre: c.nombre,
+                                        Telefono: c.telefono,
+                                        Email: c.email,
+                                        Direccion: c.direccion,
+                                        Ciudad: c.ciudad,
+                                        Tipo: c.tipoCliente,
+                                        Servicios: c.totalServicios || 0,
+                                        Activo: c.activo ? "Si" : "No",
+                                        Notas: c.notasImportantes
+                                    })}
+                                    className="bg-white text-purple-700 border-purple-200 hover:bg-purple-50 shadow-sm"
+                                />
+                                <Button
+                                    size="lg"
+                                    onClick={handleCreate}
+                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all border-0"
+                                >
+                                    <Plus className="mr-2 h-5 w-5" />
+                                    Nuevo Cliente
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
             </div>
 
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="border-none shadow-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 p-8 bg-white/10 rounded-full blur-2xl"></div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-blue-100 font-medium text-sm flex items-center">
-                            <User className="mr-2 h-4 w-4" /> Total Clientes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="text-4xl font-bold">{totalClientes}</div>
-                        <p className="text-blue-100/80 text-sm mt-1">{clientesActivos} activos actualmente</p>
-                    </CardContent>
-                </Card>
+            {/* Content Section */}
+            <div className="px-6 py-8">
+                <div className="max-w-7xl mx-auto">
+                    {/* Filters Toolbar */}
+                    <Card className="shadow-lg border-slate-200 mb-6">
+                        <CardContent className="p-6">
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Filter className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Filtrar:</span>
+                                </div>
 
-                {/* Stats for Types - Dynamic now */}
-                {Object.entries(statsPorTipo).slice(0, 2).map(([tipo, count], idx) => (
-                    <Card key={tipo} className="border-none shadow-md bg-white">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-gray-500 font-medium text-sm flex items-center capitalize">
-                                {idx === 0 ? <Home className="mr-2 h-4 w-4" /> : <Building2 className="mr-2 h-4 w-4" />}
-                                {tipo}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-gray-900">{count as number}</div>
-                            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full ${idx === 0 ? 'bg-blue-500' : 'bg-indigo-500'}`}
-                                    style={{ width: `${totalClientes ? ((count as number) / totalClientes) * 100 : 0}%` }}
-                                ></div>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={filters.ciudad}
+                                        onChange={(e) => setFilters({ ...filters, ciudad: e.target.value })}
+                                        className="h-10 px-3 bg-slate-50 border-slate-300 border rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none min-w-[140px]"
+                                    >
+                                        <option value="todas">Todas las Ciudades</option>
+                                        {ciudades.map(ciudad => (
+                                            <option key={ciudad} value={ciudad}>{ciudad}</option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        value={filters.tipo}
+                                        onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
+                                        className="h-10 px-3 bg-slate-50 border-slate-300 border rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none min-w-[140px]"
+                                    >
+                                        <option value="todos">Todos los Tipos</option>
+                                        {tiposCliente.map(t => (
+                                            <option key={t.$id} value={t.nombre}>{t.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block" />
+
+                                <div className="relative flex-1 min-w-[200px]">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                    <Input
+                                        placeholder="Buscar por nombre, teléfono o email..."
+                                        value={filters.search}
+                                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                        className="pl-11 h-10 bg-slate-50 border-slate-300 focus:bg-white transition-colors"
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
-                ))}
-                {/* Fill empty card if fewer than 2 types */}
-                {Object.keys(statsPorTipo).length < 2 && (
-                    <Card className="border-none shadow-md bg-gray-50/50 border-dashed border-2 border-gray-200 flex items-center justify-center">
-                        <p className="text-gray-400 text-sm">Más estadísticas pronto...</p>
+
+                    {/* Clients Table */}
+                    <Card className="shadow-xl border-slate-200">
+                        {filteredClientes.length === 0 ? (
+                            <CardContent className="p-12">
+                                <div className="text-center">
+                                    <div className="bg-slate-50 p-6 rounded-full shadow-inner inline-block mb-4">
+                                        <User className="h-16 w-16 text-slate-300" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">No se encontraron clientes</h3>
+                                    <p className="text-slate-500 mb-6">Intenta ajustar los filtros de búsqueda</p>
+                                </div>
+                            </CardContent>
+                        ) : (
+                            <CardContent className="p-6">
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-bold text-slate-800">Base de Clientes</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Listado completo de contactos y clientes</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                    <Table>
+                                        <TableHeader className="bg-gradient-to-r from-slate-50 to-purple-50">
+                                            <TableRow>
+                                                <TableHead className="pl-6 py-4 font-bold text-slate-700">Cliente</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Contacto</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Ubicación</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Tipo</TableHead>
+                                                <TableHead className="text-center font-bold text-slate-700">Servicios</TableHead>
+                                                <TableHead className="text-center font-bold text-slate-700">Órdenes</TableHead>
+                                                <TableHead className="text-right pr-6 font-bold text-slate-700">Acciones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredClientes.map((cliente, index) => (
+                                                <motion.tr
+                                                    key={cliente.$id}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.03 }}
+                                                    className="hover:bg-purple-50/50 transition-colors border-b border-slate-100 last:border-0 group cursor-pointer"
+                                                    onClick={() => window.location.href = `/admin/clientes/${cliente.$id}`}
+                                                >
+                                                    <TableCell className="pl-6">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                                {cliente.nombre.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
+                                                                    {cliente.nombre}
+                                                                </div>
+                                                                <div className="text-xs text-slate-500">ID: ...{cliente.$id.slice(-4)}</div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col space-y-1">
+                                                            <div className="flex items-center text-sm text-slate-700">
+                                                                <Phone className="h-3 w-3 mr-2 text-green-600" />
+                                                                {cliente.telefono}
+                                                            </div>
+                                                            <div className="flex items-center text-sm text-slate-500">
+                                                                <Mail className="h-3 w-3 mr-2 text-blue-600" />
+                                                                {cliente.email}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-semibold text-slate-700">{cliente.ciudad}</span>
+                                                            <span className="text-xs text-slate-500 truncate max-w-[150px]" title={cliente.direccion}>
+                                                                {cliente.direccion}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge className="bg-purple-100 text-purple-700 border-purple-300 capitalize font-semibold px-3 py-1">
+                                                            {cliente.tipoCliente || 'Sin Asignar'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge className="bg-blue-100 text-blue-700 border-blue-300 font-bold px-3 py-1">
+                                                            {cliente.totalServicios || 0}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <ClientOrderCount clienteId={cliente.$id} />
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all shadow-sm">
+                                                                    <Edit className="h-5 w-5" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(cliente); }}>
+                                                                    <Edit className="mr-2 h-4 w-4" /> Editar
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-red-600 focus:text-red-600"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(cliente.$id); }}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </motion.tr>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        )}
                     </Card>
-                )}
-            </div>
-
-            {/* Filters Toolbar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2 text-gray-500">
-                    <Filter className="h-4 w-4" />
-                    <span className="text-sm font-medium">Filtrar:</span>
-                </div>
-
-                <div className="flex gap-2">
-                    <select
-                        value={filters.ciudad}
-                        onChange={(e) => setFilters({ ...filters, ciudad: e.target.value })}
-                        className="h-9 px-3 bg-gray-50 border-gray-200 border rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-w-[140px]"
-                    >
-                        <option value="todas">Todas las Ciudades</option>
-                        {ciudades.map(ciudad => (
-                            <option key={ciudad} value={ciudad}>{ciudad}</option>
-                        ))}
-                    </select>
-
-                    <select
-                        value={filters.tipo}
-                        onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
-                        className="h-9 px-3 bg-gray-50 border-gray-200 border rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-w-[140px]"
-                    >
-                        <option value="todos">Todos los Tipos</option>
-                        {tiposCliente.map(t => (
-                            <option key={t.$id} value={t.nombre}>{t.nombre}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="w-px h-6 bg-gray-200 mx-1 hidden md:block"></div>
-
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Buscar por nombre, teléfono o email..."
-                        value={filters.search}
-                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                        className="w-full h-9 pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-                    />
                 </div>
             </div>
 
-            {/* Clients Table */}
-            <Card className="border-none shadow-md overflow-hidden bg-white">
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow>
-                                <TableHead className="font-semibold text-gray-600 pl-6">Cliente</TableHead>
-                                <TableHead className="font-semibold text-gray-600">Contacto</TableHead>
-                                <TableHead className="font-semibold text-gray-600">Ubicación</TableHead>
-                                <TableHead className="font-semibold text-gray-600">Tipo</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-center">Servicios</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-center">Órdenes</TableHead>
-                                <TableHead className="font-semibold text-gray-600 text-right pr-6">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                                        Cargando clientes...
-                                    </TableCell>
-                                </TableRow>
-                            ) : filteredClientes.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                                        <div className="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                                            <User className="h-8 w-8 text-gray-300" />
-                                        </div>
-                                        <p className="font-medium text-gray-900">No se encontraron clientes</p>
-                                        <p className="text-sm mt-1">Intenta ajustar los filtros de búsqueda</p>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredClientes.map((cliente) => (
-                                    <TableRow
-                                        key={cliente.$id}
-                                        className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
-                                        onClick={() => window.location.href = `/admin/clientes/${cliente.$id}`}
-                                    >
-                                        <TableCell className="pl-6">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-                                                    {cliente.nombre.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                                                        {cliente.nombre}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">ID: ...{cliente.$id.slice(-4)}</div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col space-y-1">
-                                                <div className="flex items-center text-sm text-gray-600">
-                                                    <Phone className="h-3 w-3 mr-2" /> {cliente.telefono}
-                                                </div>
-                                                <div className="flex items-center text-sm text-gray-500">
-                                                    <Mail className="h-3 w-3 mr-2" /> {cliente.email}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-gray-700">{cliente.ciudad}</span>
-                                                <span className="text-xs text-gray-500 truncate max-w-[150px]" title={cliente.direccion}>
-                                                    {cliente.direccion}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 capitalize">
-                                                {cliente.tipoCliente || 'Sin Asignar'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                {cliente.totalServicios || 0}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <ClientOrderCount clienteId={cliente.$id} />
-                                        </TableCell>
-                                        <TableCell className="text-right pr-6">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 group-hover:text-gray-600">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => handleEdit(cliente)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Editar
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDelete(cliente.$id)}>
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-
-            {/* Create/Edit Dialog Premium */}
+            {/* Create/Edit Dialog */}
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{isEditing ? "Editar Cliente" : "Nuevo Cliente"}</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            {isEditing ? "Editar Cliente" : "Nuevo Cliente"}
+                        </DialogTitle>
                         <DialogDescription>
                             {isEditing ? "Modifica los datos del cliente seleccionado." : "Ingresa la información para registrar un nuevo cliente."}
                         </DialogDescription>
@@ -431,7 +527,7 @@ export default function ClientesPage() {
 
                     <div className="grid gap-6 py-4">
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider border-b pb-1">Información Personal</h3>
+                            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider border-b pb-1">Información Personal</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                     <Label>Nombre Completo</Label>
@@ -446,7 +542,7 @@ export default function ClientesPage() {
                                 <div>
                                     <Label>Teléfono</Label>
                                     <div className="relative mt-1.5">
-                                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                         <Input
                                             value={formData.telefono}
                                             onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
@@ -459,7 +555,7 @@ export default function ClientesPage() {
                                 <div>
                                     <Label>Email</Label>
                                     <div className="relative mt-1.5">
-                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                         <Input
                                             type="email"
                                             value={formData.email}
@@ -473,12 +569,12 @@ export default function ClientesPage() {
                         </div>
 
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider border-b pb-1">Ubicación y Perfil</h3>
+                            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider border-b pb-1">Ubicación y Perfil</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                     <Label>Dirección</Label>
                                     <div className="relative mt-1.5">
-                                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                         <Input
                                             value={formData.direccion}
                                             onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
@@ -504,17 +600,15 @@ export default function ClientesPage() {
                                         <option value="Barranquilla" />
                                         <option value="Cartagena" />
                                         <option value="Bucaramanga" />
-                                        <option value="Pereira" />
-                                        <option value="Manizales" />
                                     </datalist>
                                 </div>
 
                                 <div>
                                     <Label>Tipo Cliente</Label>
                                     <div className="relative mt-1.5">
-                                        <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 z-10" />
+                                        <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 z-10" />
                                         <select
-                                            className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                             value={formData.tipoCliente}
                                             onChange={(e) => setFormData({ ...formData, tipoCliente: e.target.value })}
                                         >
@@ -538,7 +632,7 @@ export default function ClientesPage() {
                                     <Input
                                         value={formData.notasImportantes}
                                         onChange={(e) => setFormData({ ...formData, notasImportantes: e.target.value })}
-                                        placeholder="Preferencias, accessos, etc."
+                                        placeholder="Preferencias, accesos, etc."
                                         className="mt-1.5"
                                     />
                                 </div>
@@ -548,7 +642,10 @@ export default function ClientesPage() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
-                        <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 min-w-[150px]">
+                        <Button
+                            onClick={handleSubmit}
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[150px]"
+                        >
                             {isEditing ? "Guardar Cambios" : "Crear Cliente"}
                         </Button>
                     </DialogFooter>

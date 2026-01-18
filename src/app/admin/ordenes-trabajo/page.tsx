@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Calendar, Wrench, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { OrdenesFilters } from "@/components/ordenes-trabajo/OrdenesFilters";
+import { ExportExcelButton } from "@/components/ui/ExportExcelButton";
 
 export default async function OrdenesTrabajoPage({
     searchParams,
@@ -47,12 +48,31 @@ export default async function OrdenesTrabajoPage({
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight relative">Órdenes de Trabajo</h1>
                         <p className="text-slate-400 mt-1 font-medium">Gestión completa del taller</p>
                     </div>
-                    <Link href="/admin/ordenes-trabajo/nueva">
-                        <Button className="rounded-xl px-5 h-11 bg-white hover:bg-slate-50 text-slate-900 border shadow-sm font-semibold transition-all">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Nueva Orden
-                        </Button>
-                    </Link>
+                    <div className="flex gap-3">
+                        <ExportExcelButton
+                            data={ordenes}
+                            fileName="Reporte_Ordenes_Trabajo"
+                            mapData={(o: any) => ({
+                                Orden: o.numeroOrden,
+                                Cliente: o.cliente?.nombre || "N/A",
+                                Placa: o.vehiculo?.placa || "N/A",
+                                Vehiculo: o.vehiculo ? `${o.vehiculo.marca} ${o.vehiculo.modelo}` : "N/A",
+                                Fecha_Ingreso: new Date(o.fechaIngreso).toLocaleDateString(),
+                                Estado: o.estado,
+                                Prioridad: o.prioridad,
+                                Total: o.total,
+                                Kilometraje: o.kilometraje,
+                                Falla_Reportada: o.fallaReportada
+                            })}
+                            className="bg-white hover:bg-slate-50 text-slate-700 border shadow-sm"
+                        />
+                        <Link href="/admin/ordenes-trabajo/nueva">
+                            <Button className="rounded-xl px-5 h-11 bg-white hover:bg-slate-50 text-slate-900 border shadow-sm font-semibold transition-all">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Nueva Orden
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </div>
 

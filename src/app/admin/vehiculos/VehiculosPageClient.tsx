@@ -5,16 +5,18 @@ import {
     Plus,
     Search,
     Car,
-    MoreHorizontal,
     Edit,
-    Trash2,
     Fuel,
     Gauge,
-    Palette
+    Palette,
+    Calendar,
+    TrendingUp,
+    Wrench
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -23,12 +25,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
     Dialog,
     DialogContent,
@@ -41,6 +37,7 @@ import { VehiculoForm } from "@/components/ordenes-trabajo/VehiculoForm";
 import type { Vehiculo, CrearVehiculoInput } from "@/types";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 export default function VehiculosPageClient() {
     const router = useRouter();
@@ -49,11 +46,9 @@ export default function VehiculosPageClient() {
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch] = useDebounce(searchTerm, 300);
 
-    // Dialog states
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null);
 
-    // Initial load & Search
     useEffect(() => {
         const loadVehiculos = async () => {
             setIsLoading(true);
@@ -97,7 +92,6 @@ export default function VehiculosPageClient() {
         try {
             const result = await actualizarVehiculo(editingVehiculo.$id, data);
             if (result.success) {
-                // Optimistic update
                 setVehiculos(vehiculos.map(v =>
                     v.$id === editingVehiculo.$id ? { ...v, ...data } as unknown as Vehiculo : v
                 ));
@@ -114,138 +108,320 @@ export default function VehiculosPageClient() {
 
     const getFuelColor = (type: string) => {
         switch (type) {
-            case 'DIESEL': return 'text-blue-600 bg-blue-50';
-            case 'GASOLINA': return 'text-green-600 bg-green-50';
-            case 'HIBRIDO': return 'text-purple-600 bg-purple-50';
-            default: return 'text-slate-600 bg-slate-50';
+            case 'DIESEL': return 'bg-blue-100 text-blue-700 border-blue-300';
+            case 'GASOLINA': return 'bg-green-100 text-green-700 border-green-300';
+            case 'HIBRIDO': return 'bg-purple-100 text-purple-700 border-purple-300';
+            case 'ELECTRICO': return 'bg-cyan-100 text-cyan-700 border-cyan-300';
+            default: return 'bg-slate-100 text-slate-700 border-slate-300';
         }
     };
 
+    // Calculate stats
+    const stats = {
+        total: vehiculos.length,
+        diesel: vehiculos.filter(v => v.tipoCombustible === 'DIESEL').length,
+        gasolina: vehiculos.filter(v => v.tipoCombustible === 'GASOLINA').length,
+        hibrido: vehiculos.filter(v => v.tipoCombustible === 'HIBRIDO').length,
+        avgKm: vehiculos.length > 0
+            ? Math.round(vehiculos.reduce((sum, v) => sum + v.kilometraje, 0) / vehiculos.length)
+            : 0,
+    };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="h-16 w-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-slate-600 font-medium">Cargando vehículos...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Vehículos</h1>
-                    <p className="text-slate-500 mt-1">Gestión completa de la flota vehicular</p>
-                </div>
-                <Button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all hover:scale-105">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo Vehículo
-                </Button>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50">
+            {/* Epic Header */}
+            <div className="relative overflow-hidden bg-white border-b border-slate-200 shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-50/50 via-blue-50/50 to-indigo-50/50" />
+                <div className="absolute top-0 -left-4 w-72 h-72 bg-cyan-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob" />
+                <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000" />
 
-            {/* Filters */}
-            <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                        placeholder="Buscar por placa, marca, modelo..."
-                        className="pl-9 border-slate-200 bg-slate-50 focus:bg-white transition-all"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
+                <div className="relative px-6 pt-8 pb-12">
+                    <div className="max-w-7xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-8"
+                        >
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-lg">
+                                    <Car className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                        Gestión de Vehículos
+                                    </h1>
+                                    <p className="text-slate-600 font-medium mt-1">
+                                        Administra la flota vehicular completa ({vehiculos.length} vehículos)
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
 
-            {/* Table */}
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-                <Table>
-                    <TableHeader className="bg-slate-50/50">
-                        <TableRow>
-                            <TableHead className="w-[300px]">Vehículo</TableHead>
-                            <TableHead>Placa</TableHead>
-                            <TableHead>Detalles</TableHead>
-                            <TableHead>Kilometraje</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <TableRow key={i}>
-                                    <TableCell><div className="h-12 w-48 bg-slate-100 rounded animate-pulse" /></TableCell>
-                                    <TableCell><div className="h-6 w-20 bg-slate-100 rounded animate-pulse" /></TableCell>
-                                    <TableCell><div className="h-6 w-32 bg-slate-100 rounded animate-pulse" /></TableCell>
-                                    <TableCell><div className="h-6 w-24 bg-slate-100 rounded animate-pulse" /></TableCell>
-                                    <TableCell className="text-right"><div className="h-8 w-8 bg-slate-100 rounded-full inline-block animate-pulse" /></TableCell>
-                                </TableRow>
-                            ))
-                        ) : vehiculos.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-32 text-center text-slate-500">
-                                    No se encontraron vehículos.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            vehiculos.map((vehiculo) => (
-                                <TableRow key={vehiculo.$id} className="hover:bg-slate-50/50 transition-colors">
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                                                <Car className="h-5 w-5" />
-                                            </div>
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-semibold text-slate-900">{vehiculo.marca} {vehiculo.modelo}</p>
-                                                <p className="text-sm text-slate-500">{vehiculo.ano}</p>
+                                                <p className="text-cyan-100 text-sm font-semibold uppercase tracking-wider">Total Flota</p>
+                                                <p className="text-5xl font-black mt-2">{stats.total}</p>
+                                                <p className="text-xs text-cyan-100 mt-1">Vehículos registrados</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <Car className="h-8 w-8" />
                                             </div>
                                         </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className="font-mono bg-slate-50 text-slate-700 border-slate-200">
-                                            {vehiculo.placa}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1 text-sm">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs w-fit ${getFuelColor(vehiculo.tipoCombustible)}`}>
-                                                <Fuel className="h-3 w-3" /> {vehiculo.tipoCombustible}
-                                            </span>
-                                            {vehiculo.color && (
-                                                <span className="inline-flex items-center gap-1 text-slate-500 text-xs">
-                                                    <Palette className="h-3 w-3" /> {vehiculo.color}
-                                                </span>
-                                            )}
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-green-100 text-sm font-semibold uppercase tracking-wider">Gasolina</p>
+                                                <p className="text-5xl font-black mt-2">{stats.gasolina}</p>
+                                                <p className="text-xs text-green-100 mt-1">Vehículos a gasolina</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <Fuel className="h-8 w-8" />
+                                            </div>
                                         </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2 text-slate-600 font-mono text-sm">
-                                            <Gauge className="h-4 w-4 text-slate-400" />
-                                            {vehiculo.kilometraje.toLocaleString()} km
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider">Diesel</p>
+                                                <p className="text-5xl font-black mt-2">{stats.diesel}</p>
+                                                <p className="text-xs text-blue-100 mt-1">Vehículos diesel</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <Fuel className="h-8 w-8" />
+                                            </div>
                                         </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Abrir menú</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => setEditingVehiculo(vehiculo)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Editar
-                                                </DropdownMenuItem>
-                                                {/* <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Eliminar
-                                                </DropdownMenuItem> */}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-orange-500 to-red-500 text-white hover:shadow-xl transition-shadow">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                                    <CardContent className="p-6 relative">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-orange-100 text-sm font-semibold uppercase tracking-wider">Km Promedio</p>
+                                                <p className="text-4xl font-black mt-2">{stats.avgKm.toLocaleString()}</p>
+                                                <p className="text-xs text-orange-100 mt-1">Kilometraje medio</p>
+                                            </div>
+                                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur">
+                                                <Gauge className="h-8 w-8" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="flex items-center gap-3"
+                        >
+                            <Button
+                                size="lg"
+                                onClick={() => setIsCreateOpen(true)}
+                                className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all border-0"
+                            >
+                                <Plus className="mr-2 h-5 w-5" />
+                                Nuevo Vehículo
+                            </Button>
+                        </motion.div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Section */}
+            <div className="px-6 py-8">
+                <div className="max-w-7xl mx-auto">
+                    {/* Search Bar */}
+                    <Card className="shadow-lg border-slate-200 mb-6">
+                        <CardContent className="p-6">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <Input
+                                    placeholder="Buscar por placa, marca, modelo, color..."
+                                    className="pl-11 h-12 bg-slate-50 border-slate-300 focus:bg-white transition-colors text-base"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Vehicles Table */}
+                    <Card className="shadow-xl border-slate-200">
+                        {vehiculos.length === 0 && !isLoading ? (
+                            <CardContent className="p-12">
+                                <div className="text-center">
+                                    <div className="bg-slate-50 p-6 rounded-full shadow-inner inline-block mb-4">
+                                        <Car className="h-16 w-16 text-slate-300" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">No se encontraron vehículos</h3>
+                                    <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                                        {searchTerm
+                                            ? `No hay resultados para "${searchTerm}"`
+                                            : "La flota está vacía. Comienza registrando un vehículo."}
+                                    </p>
+                                    {!searchTerm && (
+                                        <Button
+                                            variant="outline"
+                                            className="border-slate-300 shadow-md"
+                                            onClick={() => setIsCreateOpen(true)}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Registrar Primer Vehículo
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        ) : (
+                            <CardContent className="p-6">
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-bold text-slate-800">Flota Vehicular</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Listado completo de vehículos registrados</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                    <Table>
+                                        <TableHeader className="bg-gradient-to-r from-slate-50 to-cyan-50">
+                                            <TableRow>
+                                                <TableHead className="w-[300px] pl-6 py-4 font-bold text-slate-700">Vehículo</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Placa</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Detalles</TableHead>
+                                                <TableHead className="font-bold text-slate-700">Kilometraje</TableHead>
+                                                <TableHead className="text-right pr-6 font-bold text-slate-700">Acciones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {vehiculos.map((vehiculo, index) => (
+                                                <motion.tr
+                                                    key={vehiculo.$id}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.03 }}
+                                                    className="hover:bg-cyan-50/50 transition-colors border-b border-slate-100 last:border-0 group"
+                                                >
+                                                    <TableCell className="pl-6 py-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
+                                                                <Car className="h-7 w-7" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-slate-900 group-hover:text-cyan-600 transition-colors">
+                                                                    {vehiculo.marca} {vehiculo.modelo}
+                                                                </p>
+                                                                <p className="text-sm text-slate-500 flex items-center gap-1">
+                                                                    <Calendar className="h-3 w-3" />
+                                                                    Año {vehiculo.ano}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline" className="font-mono font-bold text-base bg-slate-50 text-slate-700 border-slate-300 px-3 py-1.5">
+                                                            {vehiculo.placa}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Badge className={`inline-flex items-center gap-1.5 w-fit font-semibold ${getFuelColor(vehiculo.tipoCombustible)}`}>
+                                                                <Fuel className="h-3 w-3" />
+                                                                {vehiculo.tipoCombustible}
+                                                            </Badge>
+                                                            {vehiculo.color && (
+                                                                <span className="inline-flex items-center gap-1.5 text-slate-600 text-sm">
+                                                                    <Palette className="h-3 w-3" />
+                                                                    {vehiculo.color}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="p-2 bg-orange-100 rounded-lg">
+                                                                <Gauge className="h-4 w-4 text-orange-600" />
+                                                            </div>
+                                                            <span className="text-slate-900 font-mono font-semibold">
+                                                                {vehiculo.kilometraje.toLocaleString()} km
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => setEditingVehiculo(vehiculo)}
+                                                            className="h-10 w-10 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-full transition-all shadow-sm"
+                                                        >
+                                                            <Edit className="h-5 w-5" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </motion.tr>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
                         )}
-                    </TableBody>
-                </Table>
+                    </Card>
+                </div>
             </div>
 
             {/* Modal Crear */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Registrar Nuevo Vehículo</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                            Registrar Nuevo Vehículo
+                        </DialogTitle>
                     </DialogHeader>
                     <VehiculoForm
                         onSubmit={handleCreate}
@@ -258,7 +434,9 @@ export default function VehiculosPageClient() {
             <Dialog open={!!editingVehiculo} onOpenChange={(open) => !open && setEditingVehiculo(null)}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Editar Vehículo</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                            Editar Vehículo
+                        </DialogTitle>
                     </DialogHeader>
                     {editingVehiculo && (
                         <VehiculoForm
