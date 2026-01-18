@@ -13,7 +13,7 @@ import { obtenerEmpleados } from "@/lib/actions/empleados";
 import { Empleado } from "@/types";
 
 interface AjusteBancoDialogProps {
-    empleadoId: string;
+    empleadoId?: string;
     currentBalance?: number;
     open: boolean;
     onOpenChange: (open: boolean) => void;
