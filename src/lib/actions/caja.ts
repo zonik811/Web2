@@ -2,7 +2,7 @@
 
 import { databases } from "@/lib/appwrite-admin";
 import { DATABASE_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, Models } from "node-appwrite";
 import { TurnoCaja, MovimientoCaja } from "@/types/caja";
 import { revalidatePath } from "next/cache";
 
