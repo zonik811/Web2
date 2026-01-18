@@ -89,10 +89,8 @@ export function RegistrarHoraExtraDialog({
                 fecha: format(fecha, "yyyy-MM-dd"),
                 horaInicio,
                 horaFin,
-                cantidadHoras: 0, // Calculated by backend
                 tipo: tipo as any,
                 motivo,
-                estado: 'PENDIENTE'
             };
 
             const res = await registrarHorasExtras(data);
