@@ -177,13 +177,17 @@ export async function obtenerResumenTurno(turnoId: string) {
     );
 
     let totalEfectivo = 0;
+    let totalVentas = 0;
 
     movimientos.documents.forEach((mov: any) => {
+        if (mov.tipo === 'venta') {
+            totalVentas += mov.monto;
+        }
         if (mov.metodo_pago === 'efectivo') {
             if (mov.tipo === 'ingreso' || mov.tipo === 'venta') totalEfectivo += mov.monto;
             if (mov.tipo === 'retiro') totalEfectivo -= mov.monto;
         }
     });
 
-    return { totalEfectivo };
+    return { totalEfectivo, totalVentas };
 }
